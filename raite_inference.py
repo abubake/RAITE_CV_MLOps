@@ -42,7 +42,7 @@ for image_name in all_images:
 test_images = [image.to(device) for image in test_images]
 
 # Load the weights
-model = torch.load('fasterrcnn_resnet50_fpn_labData.pth')
+model = torch.load('models/fasterrcnn_resnet50_fpn_labData.pth')
 model.to(device)
 model.eval()
 
