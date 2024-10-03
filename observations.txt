@@ -1,0 +1,1 @@
+fasterrcnn does terrible in predicting nothing in case when only drones- without any additional data added.

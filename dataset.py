@@ -18,7 +18,7 @@ class RAITEDataset(Dataset):
         self.height = height
         self.width = width
         self.classes = classes
-        self.all_images = [f for f in os.listdir(dir_path) if f.endswith(".jpg")]
+        self.all_images = [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
 
     def __len__(self):
         return len(self.all_images)
@@ -26,7 +26,12 @@ class RAITEDataset(Dataset):
     def __getitem__(self, idx):
         image_name = self.all_images[idx]
         image_path = os.path.join(self.dir_path, image_name)
-        ann_path = os.path.join(self.ann_path, image_name.replace(".jpg", ".txt"))
+        if image_name.endswith(".jpg"):
+            ann_path = os.path.join(self.ann_path, image_name.replace(".jpg", ".txt"))
+        elif image_name.endswith(".png"):
+            ann_path = os.path.join(self.ann_path, image_name.replace(".png", ".txt"))
+        else:
+            print("Sorry, only png and jpg file types accepted.")
 
         image_orig = cv2.imread(image_path)
         image = cv2.cvtColor(image_orig, cv2.COLOR_BGR2RGB).astype(np.float32)

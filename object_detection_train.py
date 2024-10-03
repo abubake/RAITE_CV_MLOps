@@ -17,6 +17,8 @@ transform = transforms.Compose([transforms.ToTensor()])
 classes = 2
 dir_path = "data/archive/drone_dataset/train/images"
 ann_path = "data/archive/drone_dataset/train/labels" # contains type and contains other info
+# dir_path = "data/archive/ugv_dataset/train/images"
+# ann_path = "data/archive/ugv_dataset/train/labels"
 width = 200
 height = 200
 train_dataset = RAITEDataset(dir_path, ann_path, width, height, classes, transform=transform)
@@ -39,7 +41,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0
 
 model.train()
 
-num_epochs = 20
+num_epochs = 50
 loss_per_epoch = []
 
 # Training loop
@@ -73,7 +75,8 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss}")
 
 # Save the model after training
-torch.save(model, 'fasterrcnn_resnet50_fpn_groundRobot.pth')
+torch.save(model, 'models/fasterrcnn_resnet50_fpn_drone_v2.pth')
+#torch.save(model, 'models/fasterrcnn_resnet50_fpn_ugv_v1.pth')
 
 # Plotting the loss per epoch
 plt.figure()

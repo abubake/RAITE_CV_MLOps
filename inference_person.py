@@ -42,34 +42,26 @@ for image_name in all_images:
 test_images = [image.to(device) for image in test_images]
 
 # Load the weights
-model = torch.load('models/fasterrcnn_resnet50_fpn_drone_v2.pth')
+model = fasterrcnn_resnet50_fpn(pretrained=True)
 model.to(device)
 model.eval()
-
-# for i, image_tensor in enumerate(transformed_images[:2]):  # Change the range if you want to visualize more images
-#     # Convert tensor back to NumPy for visualization
-#     image_np = image_tensor.permute(1, 2, 0).cpu().numpy()  # Change shape to [H, W, C]
-    
-#     # Plotting
-#     plt.figure(figsize=(10, 10))
-#     plt.imshow(image_np)
-#     plt.title(f"Transformed Image {i+1} Before Prediction")
-#     plt.axis("off")
-#     plt.show()
 
 
 with torch.no_grad():
     predictions = model(test_images[:12])
 
-for prediction in predictions:
-    print(prediction)
+for i, prediction in enumerate(predictions):
+    print(f"Image {i}: {prediction}")
 
 # Visualize bounding boxes on original images
+person_class_id = 1
 for i, prediction in enumerate(predictions):
     # Extract bounding boxes, labels, and scores
     boxes = prediction['boxes'].cpu().numpy()  # Move to CPU and convert to NumPy
     labels = prediction['labels'].cpu().numpy()  # Move to CPU and convert to NumPy
     scores = prediction['scores'].cpu().numpy()  # Move to CPU and convert to NumPy
+
+    boxes = boxes[(labels == person_class_id) & (scores > .1)]
 
     original_height, original_width = original_images[i].shape[:2]
     

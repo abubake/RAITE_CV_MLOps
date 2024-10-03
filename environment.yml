@@ -1,4 +1,4 @@
-name: test
+name: raite
 channels:
   - conda-forge
   - defaults
