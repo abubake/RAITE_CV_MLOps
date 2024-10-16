@@ -15,13 +15,10 @@ transform = transforms.Compose([
     transforms.Resize((200, 200)),
     transforms.ToTensor()
 ])
-#classes = 2 # not sure if I acttualy need classes here
-dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
-#ann_path = "data/archive/drone_dataset/valid/labels" # not actually needed here
-#width = 200
-#height = 200
-#test_dataset = RAITEDataset(dir_path, ann_path, width, height, classes, transform=transform)
-#train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True) # TODO: right now only batch size 1 is workin- need to improve that
+
+# dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
+dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/IR/turtlebot_ir_test"
+
 all_images = sorted(
             [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
         )
