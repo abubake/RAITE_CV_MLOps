@@ -3,6 +3,7 @@ from torchvision import transforms
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 #from torch.utils.data import DataLoader
+from centerpoint_tracker import CentroidTracker
 import matplotlib.pyplot as plt
 import torch
 import os
@@ -15,13 +16,15 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 #classes = 2 # not sure if I acttualy need classes here
-dir_path = "data/archive/drone_dataset/test/lab"
+dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
 #ann_path = "data/archive/drone_dataset/valid/labels" # not actually needed here
 #width = 200
 #height = 200
 #test_dataset = RAITEDataset(dir_path, ann_path, width, height, classes, transform=transform)
 #train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True) # TODO: right now only batch size 1 is workin- need to improve that
-all_images = [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
+all_images = sorted(
+            [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
+        )
 
 test_images = []
 original_images = []  # To store original images for visualization
@@ -41,25 +44,15 @@ for image_name in all_images:
 # Move images to the same device as the model
 test_images = [image.to(device) for image in test_images]
 
+centerTracker = CentroidTracker(maxDisappeared=2)
+
 # Load the weights
-model = torch.load('models/fasterrcnn_resnet50_fpn_drone_v2.pth')
+model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v4.pth')
 model.to(device)
 model.eval()
 
-# for i, image_tensor in enumerate(transformed_images[:2]):  # Change the range if you want to visualize more images
-#     # Convert tensor back to NumPy for visualization
-#     image_np = image_tensor.permute(1, 2, 0).cpu().numpy()  # Change shape to [H, W, C]
-    
-#     # Plotting
-#     plt.figure(figsize=(10, 10))
-#     plt.imshow(image_np)
-#     plt.title(f"Transformed Image {i+1} Before Prediction")
-#     plt.axis("off")
-#     plt.show()
-
-
 with torch.no_grad():
-    predictions = model(test_images[:12])
+    predictions = model(test_images[0:15]) # or w/o list, test_images[:N]
 
 for prediction in predictions:
     print(prediction)
@@ -71,11 +64,14 @@ for i, prediction in enumerate(predictions):
     labels = prediction['labels'].cpu().numpy()  # Move to CPU and convert to NumPy
     scores = prediction['scores'].cpu().numpy()  # Move to CPU and convert to NumPy
 
+
     original_height, original_width = original_images[i].shape[:2]
     
     # Loop through each predicted box and draw it
+    rescaled_boxes = []
     for box, score in zip(boxes, scores):
-        if score > 0.1:  # Only consider predictions with confidence score > 0.5
+
+        if score > 0:  # Only consider predictions with confidence score > 0.5
             # Extract box coordinates (x1, y1, x2, y2)
             x1, y1, x2, y2 = map(int, box)
 
@@ -84,16 +80,30 @@ for i, prediction in enumerate(predictions):
             y1 = int(y1 * (original_height / 200))
             x2 = int(x2 * (original_width / 200))
             y2 = int(y2 * (original_height / 200))
-            
+
+            rescaled_boxes.append((x1, y1, x2, y2))
             # Draw the rectangle on the original image
             cv2.rectangle(original_images[i], (x1, y1), (x2, y2), (0, 255, 0), 2)
             
             # Put a label with the score
             label_text = f"Score: {score:.2f}"
             cv2.putText(original_images[i], label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 5)
+    
+    # For the bounding boxes, find the centerpoints:
+    centerTracker.update(boxes=rescaled_boxes)
+
+    # Draw centerpoints and IDs on the original image
+    for objectID, centroid in centerTracker.objects.items():
+        # Draw the centroid
+        cx, cy = centroid  # Assuming centroid is in the form (cx, cy)
+        cv2.circle(original_images[i], (int(cx), int(cy)), 7, (0, 0, 255), -1)  # Draw the centerpoint in blue
+        
+        # Put the ID text next to the centroid
+        cv2.putText(original_images[i], f"ID: {objectID}", (int(cx), int(cy) - 15), 
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
 
 # Display the images with bounding boxes
-for i, img in enumerate(original_images[:12]):
+for i, img in enumerate(original_images[0:15]):
     # Convert BGR to RGB for visualization with matplotlib
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     

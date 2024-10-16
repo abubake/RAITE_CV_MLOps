@@ -15,12 +15,11 @@ import matplotlib.pyplot as plt
 transform = transforms.Compose([transforms.ToTensor()])
 #train_dataset = CocoDetection(root="path_to_images", annFile="path_to_annotations", transform=transform)
 classes = 2
-dir_path = "data/archive/drone_dataset/train/images"
-ann_path = "data/archive/drone_dataset/train/labels" # contains type and contains other info
-# dir_path = "data/archive/ugv_dataset/train/images"
-# ann_path = "data/archive/ugv_dataset/train/labels"
-width = 200
-height = 200
+dir_path = "data/archive/ugv_dataset_v5/train/images"
+ann_path = "data/archive/ugv_dataset_v5/train/labels" # contains type and contains other info
+
+width = 400
+height = 400
 train_dataset = RAITEDataset(dir_path, ann_path, width, height, classes, transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True) # TODO: right now only batch size 1 is workin- need to improve that
 
@@ -41,7 +40,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0
 
 model.train()
 
-num_epochs = 50
+num_epochs = 40
 loss_per_epoch = []
 
 # Training loop
@@ -75,7 +74,7 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss}")
 
 # Save the model after training
-torch.save(model, 'models/fasterrcnn_resnet50_fpn_drone_v2.pth')
+torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_v5.pth')
 #torch.save(model, 'models/fasterrcnn_resnet50_fpn_ugv_v1.pth')
 
 # Plotting the loss per epoch

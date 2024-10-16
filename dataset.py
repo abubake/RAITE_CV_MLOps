@@ -18,7 +18,10 @@ class RAITEDataset(Dataset):
         self.height = height
         self.width = width
         self.classes = classes
-        self.all_images = [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
+        #self.all_images = [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
+        self.all_images = sorted(
+            [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
+        )
 
     def __len__(self):
         return len(self.all_images)
