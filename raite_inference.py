@@ -4,6 +4,7 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 #from torch.utils.data import DataLoader
 from centerpoint_tracker import CentroidTracker
+from vision_attack_detection import attackDetector
 import matplotlib.pyplot as plt
 import torch
 import os
@@ -17,7 +18,7 @@ transform = transforms.Compose([
 ])
 
 # dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
-dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/IR/turtlebot_ir_test"
+dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/drone/t2_autonomyPark150/images"
 
 all_images = sorted(
             [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
@@ -42,14 +43,17 @@ for image_name in all_images:
 test_images = [image.to(device) for image in test_images]
 
 centerTracker = CentroidTracker(maxDisappeared=2)
+anomalyDetector = attackDetector(brightness_threshold=50)
 
 # Load the weights
 model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v4.pth')
 model.to(device)
 model.eval()
 
+start_index = 55 # change based off of range we are looking at
+end_index = 70
 with torch.no_grad():
-    predictions = model(test_images[0:15]) # or w/o list, test_images[:N]
+    predictions = model(test_images[start_index:end_index]) # or w/o list, test_images[:N]
 
 for prediction in predictions:
     print(prediction)
@@ -62,7 +66,7 @@ for i, prediction in enumerate(predictions):
     scores = prediction['scores'].cpu().numpy()  # Move to CPU and convert to NumPy
 
 
-    original_height, original_width = original_images[i].shape[:2]
+    original_height, original_width = original_images[i+start_index].shape[:2]
     
     # Loop through each predicted box and draw it
     rescaled_boxes = []
@@ -80,27 +84,33 @@ for i, prediction in enumerate(predictions):
 
             rescaled_boxes.append((x1, y1, x2, y2))
             # Draw the rectangle on the original image
-            cv2.rectangle(original_images[i], (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(original_images[i+start_index], (x1, y1), (x2, y2), (0, 255, 0), 2)
             
             # Put a label with the score
             label_text = f"Score: {score:.2f}"
-            cv2.putText(original_images[i], label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 5)
+            cv2.putText(original_images[i+start_index], label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 5)
     
     # For the bounding boxes, find the centerpoints:
     centerTracker.update(boxes=rescaled_boxes)
-
+    
     # Draw centerpoints and IDs on the original image
+    centroids = []
     for objectID, centroid in centerTracker.objects.items():
         # Draw the centroid
         cx, cy = centroid  # Assuming centroid is in the form (cx, cy)
-        cv2.circle(original_images[i], (int(cx), int(cy)), 7, (0, 0, 255), -1)  # Draw the centerpoint in blue
+        centroids.append(centroid)
+        cv2.circle(original_images[i+start_index], (int(cx), int(cy)), 7, (0, 0, 255), -1)  # Draw the centerpoint in blue
         
         # Put the ID text next to the centroid
-        cv2.putText(original_images[i], f"ID: {objectID}", (int(cx), int(cy) - 15), 
+        cv2.putText(original_images[i+start_index], f"ID: {objectID}", (int(cx), int(cy) - 15), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
+    
+    # tests detection of attacks on the given set of frames
+    anomalyDetector.detect_attack(frame_index=i+start_index, frame=original_images[i+start_index], detections=rescaled_boxes, centroids=centroids)
+
 
 # Display the images with bounding boxes
-for i, img in enumerate(original_images[0:15]):
+for i, img in enumerate(original_images[start_index:end_index]):
     # Convert BGR to RGB for visualization with matplotlib
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
@@ -109,3 +119,5 @@ for i, img in enumerate(original_images[0:15]):
     plt.title(f"Image {i+1} with Predicted Bounding Boxes")
     plt.axis("off")
     plt.show()
+
+print(anomalyDetector.attacks)

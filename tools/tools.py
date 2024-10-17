@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 
+
 def convert_to_png_in_order(input_dir, output_dir, prefix):
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -118,16 +119,66 @@ def find_the_empty_txt(directory):
         if filename.endswith('.txt') and os.path.getsize(file_path) == 0:
             print(f"Empty file: {filename}")
 
-def convert_txt_indexes_and_rename_images_and_txts(input_dir, output_dir, prefix): #, original_class=2, output_class=1):
 
-    #replace_first_element_in_files(input_dir, old_value=original_class, new_value=output_class)
-    convert_to_png_in_order(input_dir, output_dir, prefix)
-    rename_txt_files_in_order(input_dir, output_dir, prefix)
+def rename_image_txt_pairs(input_dir, prefix):
+    """
+    Renames all image and txt file pairs in the input directory to a specified prefix.
+    
+    Args:
+    - input_dir (str): Path to the directory containing images and txt files.
+    - prefix (str): The new prefix to use for renaming image and txt files.
+    """
+    # Get all image files in the directory
+    image_files = [f for f in os.listdir(input_dir) if f.endswith(('.png','.PNG','.JPG','.jpeg','.JPEG', '.jpg'))]
+
+    # Set to track processed pairs
+    processed_files = set()
+
+    # Process each image and find its corresponding txt file
+    for i, image_filename in enumerate(image_files, start=1):
+        image_base_name = os.path.splitext(image_filename)[0]  # Get the base name without extension
+
+        # Check if the image file has already been processed
+        if image_base_name in processed_files:
+            continue  # Skip if already processed
+
+        # Search for a corresponding .txt file with the same base name
+        txt_filename = f"{image_base_name}.txt"
+        txt_path = os.path.join(input_dir, txt_filename)
+
+        # If no matching .txt file is found, continue to search the directory
+        if not os.path.exists(txt_path):
+            print(f"Warning: No corresponding .txt file found for {image_filename}. Skipping.")
+            continue
+
+        # New names for the image and txt files
+        new_image_name = f"{prefix}_{i}{os.path.splitext(image_filename)[1]}"  # Retain original extension
+        new_txt_name = f"{prefix}_{i}.txt"
+
+        # Construct full old and new file paths
+        old_image_path = os.path.join(input_dir, image_filename)
+        old_txt_path = os.path.join(input_dir, txt_filename)
+        new_image_path = os.path.join(input_dir, new_image_name)
+        new_txt_path = os.path.join(input_dir, new_txt_name)
+
+        # Rename the image and txt file
+        try:
+            os.rename(old_image_path, new_image_path)
+            os.rename(old_txt_path, new_txt_path)
+            print(f"Renamed {image_filename} to {new_image_name} and {txt_filename} to {new_txt_name}")
+
+            # Add base names of processed image and txt file to the set
+            processed_files.add(image_base_name)
+
+        except Exception as e:
+            print(f"Failed to rename files {image_filename} and {txt_filename}: {e}")
+
+
 
 
 if __name__ == '__main__':
     ######################### FUNCTION 1 ############################
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/test4_251_DK_ugv"
+    #input_dir = "/home/eherrin@ad.ufl.edu/Documents/test4_251_DK_ugv"
     # output_dir = "/home/eherrin@ad.ufl.edu/Documents/20241003_au_park_jackal/images_converted"
     # prefix = "jackal_single"
     #convert_to_png_in_order(input_dir, output_dir, prefix)
@@ -137,7 +188,6 @@ if __name__ == '__main__':
     # Use the function to update the files in the given directory
     # directory = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/drone_dataset_v2/valid/labels"
     #directory = "/home/eherrin@ad.ufl.edu/Documents/labels"
-    # replace_first_element_in_files(input_dir, old_value=2, new_value=1)
 
 
     ######################### FUNCTION 3 ############################
@@ -149,9 +199,9 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/20241003_autonomy_park_human_and_ugvs5_data/labels"
-    output_dir = "/home/eherrin@ad.ufl.edu/Documents/20241003_autonomy_park_human_and_ugvs5_data/labels/converted"
-    prefix = "large_spot_short_clip"
-    #convert_txt_indexes_and_rename_images_and_txts(input_dir, output_dir, prefix)
-    #convert_to_png_in_order(input_dir, output_dir, prefix)
-    rename_txt_files_in_order(input_dir, output_dir, prefix)
+    input_dir = "/home/eherrin@ad.ufl.edu/Documents/test4_251_DK_ugv"
+    prefix = "occlusions"
+    replace_first_element_in_files(input_dir, old_value=2, new_value=0)
+
+
+

@@ -207,22 +207,28 @@ class DetectionEvaluator:
                 precisions.append(res[0])
                 recalls.append(res[1])
 
-            # Plot precision-recall curve for the current IoU threshold
-            plt.plot(recalls, precisions, label=f'IoU: {iou_thresh}')
+            plt.plot(recalls, precisions, label=f'IoU: {iou_thresh}', marker='o', markersize=6, linewidth=2)
 
-            # Adding labels and title
+        # Adding labels and title
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title(f'Precision-Recall Curves for IoU 0.5 and 0.75')
+        plt.legend(loc='lower left')
+        plt.grid(True, linestyle='--', alpha=0.7)
 
-            plt.xlim(0, 1)
-            plt.ylim(0, 1)
-            plt.xlabel('Recall')
-            plt.ylabel('Precision')
-            plt.title(f'Precision-Recall Curve (IoU: {iou_thresh})')
-            plt.legend(loc='lower left')
-            plt.grid(True)
+        # Set axis limits dynamically if precision-recall trade-offs are small
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
 
-            # Save the plot for the current IoU threshold
-            plt.savefig(f'{savePath}/pr_curve_iou_{iou_thresh}.png')
-            #plt.show()  # Show the plot for the current IoU threshold
+        # Adjust aspect ratio to give a better visual representation
+        plt.gca().set_aspect('equal', adjustable='box')
+
+        # Save the plot for the selected IoU thresholds
+        plt.savefig(f'{savePath}/pr_curve_iou_0.5_and_0.75.png')
+
+        # Close the figure to free up memory
+        plt.close()
+
 
 
 ###########################
