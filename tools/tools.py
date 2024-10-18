@@ -199,9 +199,10 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/test4_251_DK_ugv"
-    prefix = "occlusions"
-    replace_first_element_in_files(input_dir, old_value=2, new_value=0)
+    input_dir = "/home/eherrin@ad.ufl.edu/Documents/noisy_drone_testset"
+    prefix = "foggy_noisy"
+    rename_image_txt_pairs(input_dir, prefix)
+    # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
 
 
 

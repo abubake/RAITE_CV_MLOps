@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 transform = transforms.Compose([transforms.ToTensor()])
 #train_dataset = CocoDetection(root="path_to_images", annFile="path_to_annotations", transform=transform)
 classes = 2
-dir_path = "data/archive/ugv_dataset_v5/train/images"
-ann_path = "data/archive/ugv_dataset_v5/train/labels" # contains type and contains other info
+dir_path = "data/archive/ugv_dataset_backpacks_v5/train/images"
+ann_path = "data/archive/ugv_dataset_backpacks_v5/train/labels" # contains type and contains other info
 
 width = 400
 height = 400
@@ -74,7 +74,7 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss}")
 
 # Save the model after training
-torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_v5.pth')
+torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_backpacks_v5.pth')
 #torch.save(model, 'models/fasterrcnn_resnet50_fpn_ugv_v1.pth')
 
 # Plotting the loss per epoch
