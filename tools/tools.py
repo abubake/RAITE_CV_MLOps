@@ -174,6 +174,44 @@ def rename_image_txt_pairs(input_dir, prefix):
             print(f"Failed to rename files {image_filename} and {txt_filename}: {e}")
 
 
+import os
+
+def replace_any_string_in_txt_files(directory, replacement_digit):
+    """
+    Goes through a directory and replaces the first word (string) of each line in all .txt files
+    with the specified digit.
+    
+    Args:
+    - directory (str): The path to the directory containing the .txt files.
+    - replacement_digit (str or int): The digit to replace the first string with.
+    """
+    # Get all txt files in the directory
+    txt_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+
+    # Process each txt file
+    for txt_file in txt_files:
+        file_path = os.path.join(directory, txt_file)
+
+        # Read the contents of the file
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Replace the first word (string) of each line with the replacement digit
+        with open(file_path, 'w') as file:
+            for line in lines:
+                # Split the line into words (assumes words are separated by spaces)
+                parts = line.split(maxsplit=1)
+
+                if parts:
+                    # Replace the first word (string) with the replacement digit
+                    new_line = f"{replacement_digit} {parts[1]}" if len(parts) > 1 else f"{replacement_digit}\n"
+                    file.write(new_line)
+                else:
+                    # In case the line is empty, write it as is
+                    file.write(line)
+
+        print(f"Processed {txt_file}")
+
 
 
 if __name__ == '__main__':
@@ -199,10 +237,16 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/noisy_drone_testset"
-    prefix = "foggy_noisy"
-    rename_image_txt_pairs(input_dir, prefix)
+    input_dir = "/home/eherrin@ad.ufl.edu/Documents/archive/drone_dataset/valid"
+    #input_dir = "/home/eherrin@ad.ufl.edu/Documents/ugv_car_counterexamples_train/labels"
+    #prefix = "general_drones"
+    #rename_image_txt_pairs(input_dir, prefix)
+    replace_first_element_in_files(input_dir, old_value=0, new_value=1)
     # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
+    # replace_first_element_in_files(input_dir, old_value=3, new_value=0)
+    # replace_first_element_in_files(input_dir, old_value=4, new_value=0)
+    # replace_first_element_in_files(input_dir, old_value=5, new_value=0)
+    #replace_any_string_in_txt_files(input_dir, 0)
 
 
 

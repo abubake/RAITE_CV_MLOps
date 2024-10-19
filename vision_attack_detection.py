@@ -1,12 +1,14 @@
 
 import numpy as np
 import cv2
+import playsound
+import threading
 
 class attackDetector():
     '''
     Detects attacks on vision based object detection, and stores indexes of frames which were attacked.
     '''
-    def __init__(self, brightness_threshold=50):
+    def __init__(self, brightness_threshold=50, frame_interval=20, warmup_frames=1800):
 
         self.attacks = {'motion': [],
                         'occlusion': [],
@@ -15,6 +17,10 @@ class attackDetector():
         self.prev_centroids = None
         self.prev_frame = None
         self.brightness_threshold = brightness_threshold
+        self.frame_interval = frame_interval # frames between which to detect a large change in brightness
+        self.warmup_frames = warmup_frames # frames to wait before detecting freeze frame. 10fps * 180s = 1800
+        self.last_stored_frame = None
+        self.last_stored_index = -frame_interval  # Initialize with -interval to ensure the first frame gets stored
 
     def alert_human(self):
         '''
@@ -22,6 +28,9 @@ class attackDetector():
         '''
         #print("I don't want to talk to you no more, you empty-headed animal food trough wiper! I fart in your general direction! Your mother was a hamster, and your father smelt of elderberries!")
         print("Two kinds of people are staying on this beach! The dead and those who are going to die! Now, let’s get the hell out of here!")
+        # sound_thread = threading.Thread(target=playsound.playsound,args=('/home/basestation/alert.wav',))
+        # sound_thread.start()
+        # playsound.playsound('/home/basestation/alert.wav')
 
     def detect_attack(self, frame_index, frame, detections, centroids):
         '''
@@ -36,17 +45,18 @@ class attackDetector():
         
         '''
         # Check for motion attacks (e.g., frame freeze)
-        if self.prev_centroids:
+        if self.prev_centroids and frame_index > self.warmup_frames:
             for prev, curr in zip(self.prev_centroids, centroids):
                 distance = np.linalg.norm(np.array(prev) - np.array(curr))
-                if distance == 0:
+                if distance < 0.2:
                     self.attacks['motion'].append(frame_index)
                     self.alert_human()
+                    break
         
         self.prev_centroids = centroids
 
         # Check for occlusion of camera attacks
-        occlusion_score = self._detect_occlusion(frame)
+        occlusion_score = self._detect_occlusion(frame, detections)
         if occlusion_score: # when occulsion score, bc it is 0 or 1
             self.attacks['occlusion'].append(frame_index)
             self.alert_human()
@@ -57,14 +67,15 @@ class attackDetector():
             self.alert_human()
 
          # Tampering detection (check against previous frame)
-        if self.prev_frame is not None and self._detect_tampering(frame, self.prev_frame):
-            self.attacks['tampering'].append(frame_index)
-            self.alert_human()
+        if frame_index - self.last_stored_index >= self.frame_interval:
+            if self.last_stored_frame is not None and self._detect_tampering(frame, self.last_stored_frame):
+                self.attacks['tampering'].append(frame_index)
+                self.alert_human()
 
         self.prev_frame = frame
 
 
-    def _detect_occlusion(self, frame):
+    def _detect_occlusion(self, frame, detections):
         """
         Detect occlusion based on frame brightness or other characteristics.
         
@@ -77,7 +88,7 @@ class attackDetector():
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         brightness = np.mean(gray_frame)
 
-        if brightness < 50:  # Adjust this threshold based on the environment
+        if brightness < 50 and len(detections) == 0:  # Adjust this threshold based on the environment
             return 1.0  # Fully occluded
         else:
             return 0.0  # Not occluded
@@ -88,12 +99,13 @@ class attackDetector():
         Detect spoofing based on sudden appearance of objects.
         Returns True if spoofing is detected, otherwise False.
         """
-        return len(detections) > 10 
+        return len(detections) > 8
     
 
     def _detect_tampering(self, current_frame, prev_frame):
         """
         Detect tampering by comparing brightness or color changes between frames.
+        Compares every 20 frames.
         """
         current_brightness = np.mean(cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY))
         prev_brightness = np.mean(cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY))

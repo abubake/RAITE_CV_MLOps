@@ -300,4 +300,4 @@ if __name__ == '__main__':
     # print(ap_results)
     # print(area_results)
     #evaluate_all_test_sets(model_path='models/drones/fasterrcnn_resnet50_fpn_drone_v3.pth', dir="data/archive/test_sets/drone")
-    evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v4.pth', dir="data/archive/test_sets/ugv")
+    evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v5.pth', dir="data/archive/test_sets/ugv")

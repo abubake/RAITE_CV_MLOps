@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import torch
 import os
 import cv2
+import numpy as np
 
 device = 'cuda'
 transform = transforms.Compose([
@@ -18,7 +19,9 @@ transform = transforms.Compose([
 ])
 
 # dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
-dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/drone/t2_autonomyPark150/images"
+# dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/drone/t2_autonomyPark150/images"
+# dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/cars/images"
+dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/backpacks/images"
 
 all_images = sorted(
             [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
@@ -46,12 +49,12 @@ centerTracker = CentroidTracker(maxDisappeared=2)
 anomalyDetector = attackDetector(brightness_threshold=50)
 
 # Load the weights
-model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v4.pth')
+model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v3.pth')
 model.to(device)
 model.eval()
 
-start_index = 55 # change based off of range we are looking at
-end_index = 70
+start_index = 60 # change based off of range we are looking at
+end_index = 80
 with torch.no_grad():
     predictions = model(test_images[start_index:end_index]) # or w/o list, test_images[:N]
 
@@ -59,6 +62,7 @@ for prediction in predictions:
     print(prediction)
 
 # Visualize bounding boxes on original images
+score_list = []
 for i, prediction in enumerate(predictions):
     # Extract bounding boxes, labels, and scores
     boxes = prediction['boxes'].cpu().numpy()  # Move to CPU and convert to NumPy
@@ -72,6 +76,7 @@ for i, prediction in enumerate(predictions):
     rescaled_boxes = []
     for box, score in zip(boxes, scores):
 
+        score_list.append(score)
         if score > 0:  # Only consider predictions with confidence score > 0.5
             # Extract box coordinates (x1, y1, x2, y2)
             x1, y1, x2, y2 = map(int, box)
@@ -120,4 +125,5 @@ for i, img in enumerate(original_images[start_index:end_index]):
     plt.axis("off")
     plt.show()
 
+print(np.mean(score_list))
 print(anomalyDetector.attacks)
