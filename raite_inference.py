@@ -19,9 +19,9 @@ transform = transforms.Compose([
 ])
 
 # dir_path = "data/archive/test_sets/drone/t2_autonomyPark150/images"
-# dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/drone/t2_autonomyPark150/images"
+dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/drone/t2_autonomyPark150/images"
 # dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/cars/images"
-dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/backpacks/images"
+# dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/special_cases/backpacks/images"
 
 all_images = sorted(
             [f for f in os.listdir(dir_path) if f.endswith(".jpg") or f.endswith(".png")]
@@ -45,11 +45,11 @@ for image_name in all_images:
 # Move images to the same device as the model
 test_images = [image.to(device) for image in test_images]
 
-centerTracker = CentroidTracker(maxDisappeared=2)
+centerTracker = CentroidTracker(maxDisappeared=5)
 anomalyDetector = attackDetector(brightness_threshold=50)
 
 # Load the weights
-model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v3.pth')
+model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth')
 model.to(device)
 model.eval()
 

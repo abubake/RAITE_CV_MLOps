@@ -12,13 +12,13 @@ import torch
 import matplotlib.pyplot as plt
 
 # Function to send email notification
-def send_email(total_time, avg_time_per_epoch):
+def send_email(hours, minutes, avg_time_per_epoch):
     sender_email = "bakerherrin2@gmail.com"
     receiver_email = "bakerherrin2@gmail.com"
-    password = "BH13579#a"  # Replace with your Gmail password or app-specific password
+    password = "cdvi gqha lund weld"  # Replace with your Gmail password or app-specific password
 
     subject = "Training Complete - Faster R-CNN"
-    body = f"Training is complete.\n\nTotal Training Time: {total_time:.2f} seconds\nAverage Time per Epoch: {avg_time_per_epoch:.2f} seconds"
+    body = f"Training is complete.\n\nTotal Training Time: {hours} hours and {minutes} minutes\nAverage Time per Epoch: {avg_time_per_epoch:.2f} seconds"
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -44,8 +44,8 @@ start_time = time.time()
 # Custom dataset loader for your own data
 transform = transforms.Compose([transforms.ToTensor()])
 classes = 2
-dir_path = "data/archive/ugv_dataset_v7/train/images"
-ann_path = "data/archive/ugv_dataset_v7/train/labels" 
+dir_path = "data/archive/ugv_dataset_v6/train/images"
+ann_path = "data/archive/ugv_dataset_v6/train/labels" 
 
 width = 640
 height = 640
@@ -66,7 +66,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0
 
 model.train()
 
-num_epochs = 40
+num_epochs = 35
 loss_per_epoch = []
 epoch_times = []
 
@@ -110,10 +110,11 @@ total_training_time = time.time() - start_time
 avg_time_per_epoch = sum(epoch_times) / num_epochs
 
 # Send email notification
-send_email(total_training_time, avg_time_per_epoch)
+hours, minutes = divmod(total_training_time // 60, 60)
+send_email(hours, minutes, avg_time_per_epoch)
 
 # Save the model after training
-torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth')
+torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_v6.pth')
 
 # Plotting the loss per epoch
 plt.figure()
