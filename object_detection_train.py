@@ -44,8 +44,8 @@ start_time = time.time()
 # Custom dataset loader for your own data
 transform = transforms.Compose([transforms.ToTensor()])
 classes = 2
-dir_path = "data/archive/ugv_dataset_v6/train/images"
-ann_path = "data/archive/ugv_dataset_v6/train/labels" 
+dir_path = "data/archive/ugv_dataset_comp_v2/train/images"
+ann_path = "data/archive/ugv_dataset_comp_v2/train/labels" 
 
 width = 640
 height = 640
@@ -66,7 +66,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0
 
 model.train()
 
-num_epochs = 35
+num_epochs = 20
 loss_per_epoch = []
 epoch_times = []
 
@@ -114,7 +114,7 @@ hours, minutes = divmod(total_training_time // 60, 60)
 send_email(hours, minutes, avg_time_per_epoch)
 
 # Save the model after training
-torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_v6.pth')
+torch.save(model, 'models/ugvs/fasterrcnn_resnet50_fpn_ugv_comp_v2.pth')
 
 # Plotting the loss per epoch
 plt.figure()

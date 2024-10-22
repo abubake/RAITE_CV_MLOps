@@ -2,24 +2,52 @@ import os
 from PIL import Image
 
 
-def convert_to_png_in_order(input_dir, output_dir, prefix):
+# def convert_to_png_in_order(input_dir, output_dir, prefix):
+#     # Create the output directory if it doesn't exist
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
+
+#     # Get a sorted list of all files in the input directory
+#     image_files = sorted([f for f in os.listdir(input_dir) if f.endswith('.png') or f.endswith('.jpg')])
+
+#     # Loop through the sorted list and convert to PNG
+#     for i, filename in enumerate(image_files, start=1):
+#         # Construct the full file path
+#         file_path = os.path.join(input_dir, filename)
+        
+#         # Open the image file
+#         try:
+#             with Image.open(file_path) as img:
+#                 # Create the output file path with the format prefix_ith_image.png
+#                 output_file = f"{prefix}_{i}.png"
+#                 output_path = os.path.join(output_dir, output_file)
+                
+#                 # Save the image as PNG
+#                 img.save(output_path, 'PNG')
+#                 print(f"Converted {filename} to {output_file}")
+#         except Exception as e:
+#             print(f"Failed to convert {filename}: {e}")
+
+# This version maintains the image base name after the conversion
+def convert_to_png_in_order(input_dir, output_dir):
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Get a sorted list of all files in the input directory
-    image_files = sorted([f for f in os.listdir(input_dir) if f.endswith('.png') or f.endswith('.jpg')])
+    image_files = sorted([f for f in os.listdir(input_dir) if f.endswith(('.png','.PNG','.JPG','.jpeg','.JPEG', '.jpg', 'webp'))])
 
     # Loop through the sorted list and convert to PNG
     for i, filename in enumerate(image_files, start=1):
         # Construct the full file path
         file_path = os.path.join(input_dir, filename)
+        image_base_name = os.path.splitext(filename)[0] # Gets image base name without extention
         
         # Open the image file
         try:
             with Image.open(file_path) as img:
                 # Create the output file path with the format prefix_ith_image.png
-                output_file = f"{prefix}_{i}.png"
+                output_file = f"{image_base_name}.png"
                 output_path = os.path.join(output_dir, output_file)
                 
                 # Save the image as PNG
@@ -119,8 +147,43 @@ def find_the_empty_txt(directory):
         if filename.endswith('.txt') and os.path.getsize(file_path) == 0:
             print(f"Empty file: {filename}")
 
+def remove_end_of_filename(input_dir):
+    # Removes additional ending of file name 
+    
+    # Set to track processed pairs
+    processed_files = set()
 
-def rename_image_txt_pairs(input_dir, prefix):
+    # Get all image files in the directory
+    image_files = [f for f in os.listdir(input_dir) if f.endswith(('.png','.PNG','.JPG','.jpeg','.JPEG', '.jpg'))]
+
+    # Process each image 
+    for i, image_filename in enumerate(image_files, start=1):
+        image_base_name = os.path.splitext(image_filename)[0]  # Get the base name without extension
+
+        # Check if the image file has already been processed
+        if image_base_name in processed_files:
+            continue  # Skip if already processed
+        
+        # Constructs old and new file paths
+        old_image_path = os.path.join(input_dir, image_filename)
+        image_base_name = image_base_name.rsplit(' ', 1)[0] # Removes the end string of file name seperated by a space
+        new_image_name = f"{image_base_name}{os.path.splitext(image_filename)[1]}"  # Retain original extension
+        new_image_path = os.path.join(input_dir, new_image_name)
+
+
+        # Rename the image and txt file
+        try:
+            os.rename(old_image_path, new_image_path)
+            print(f"Renamed {image_filename} to {new_image_name}")
+
+            # Add base names of processed image and txt file to the set
+            processed_files.add(image_base_name)
+
+        except Exception as e:
+            print(f"Failed to rename files {image_filename}: {e}")    
+
+
+def rename_image_txt_pairs(input_dir, prefix, start_num=0):
     """
     Renames all image and txt file pairs in the input directory to a specified prefix.
     
@@ -152,8 +215,8 @@ def rename_image_txt_pairs(input_dir, prefix):
             continue
 
         # New names for the image and txt files
-        new_image_name = f"{prefix}_{i}{os.path.splitext(image_filename)[1]}"  # Retain original extension
-        new_txt_name = f"{prefix}_{i}.txt"
+        new_image_name = f"{prefix}_{i+start_num}{os.path.splitext(image_filename)[1]}"  # Retain original extension
+        new_txt_name = f"{prefix}_{i+start_num}.txt"
 
         # Construct full old and new file paths
         old_image_path = os.path.join(input_dir, image_filename)
@@ -237,16 +300,21 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/archive/drone_dataset/valid"
+    input_dir = "/home/eherrin@ad.ufl.edu/Documents/t5_clutter_ugv/train_yolo/spot"
+    #output_dir = "/home/eherrin@ad.ufl.edu/Documents/test_8_jakal_new/images/converted_to_png"
     #input_dir = "/home/eherrin@ad.ufl.edu/Documents/ugv_car_counterexamples_train/labels"
-    #prefix = "general_drones"
+    # prefix = "RAITE_jackal_dell"
     #rename_image_txt_pairs(input_dir, prefix)
-    replace_first_element_in_files(input_dir, old_value=0, new_value=1)
+    # find_the_empty_txt(input_dir)
+    # replace_first_element_in_files(input_dir, old_value=0, new_value=1)
     # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=3, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=4, new_value=0)
-    # replace_first_element_in_files(input_dir, old_value=5, new_value=0)
-    #replace_any_string_in_txt_files(input_dir, 0)
+    replace_first_element_in_files(input_dir, old_value=1, new_value=4)
+    # replace_any_string_in_txt_files(input_dir, 0)
+    # convert_to_png_in_order(input_dir, output_dir, prefix)
+    # rename_image_txt_pairs(input_dir, prefix)
+    # remove_end_of_filename(input_dir)
 
 
 
