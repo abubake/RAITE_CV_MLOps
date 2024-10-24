@@ -300,17 +300,17 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/t5_clutter_ugv/train_yolo/spot"
+    input_dir = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/drone_dataset_comp_v2/train/labels"
     #output_dir = "/home/eherrin@ad.ufl.edu/Documents/test_8_jakal_new/images/converted_to_png"
     #input_dir = "/home/eherrin@ad.ufl.edu/Documents/ugv_car_counterexamples_train/labels"
-    # prefix = "RAITE_jackal_dell"
-    #rename_image_txt_pairs(input_dir, prefix)
+    # prefix = "RAITE_jackal_with_cars"
+    # rename_image_txt_pairs(input_dir, prefix)
     # find_the_empty_txt(input_dir)
-    # replace_first_element_in_files(input_dir, old_value=0, new_value=1)
+    replace_first_element_in_files(input_dir, old_value=1, new_value=5)
     # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=3, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=4, new_value=0)
-    replace_first_element_in_files(input_dir, old_value=1, new_value=4)
+    #replace_first_element_in_files(input_dir, old_value=2, new_value=1)
     # replace_any_string_in_txt_files(input_dir, 0)
     # convert_to_png_in_order(input_dir, output_dir, prefix)
     # rename_image_txt_pairs(input_dir, prefix)

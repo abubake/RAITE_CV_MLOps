@@ -1,10 +1,18 @@
 
+from enum import IntEnum
 import numpy as np
 import cv2
-import playsound
-import threading
 
-class attackDetector():
+
+class AttackType(IntEnum):
+    NONE=0
+    OCCLUSION=1
+    SPOOFING=2
+    TAMPERING=3
+    MOTION=4
+
+
+class AttackDetector():
     '''
     Detects attacks on vision based object detection, and stores indexes of frames which were attacked.
     '''
@@ -17,10 +25,11 @@ class attackDetector():
         self.prev_centroids = None
         self.prev_frame = None
         self.brightness_threshold = brightness_threshold
-        self.frame_interval = frame_interval # frames between which to detect a large change in brightness
+        self.frame_interval = frame_interval
         self.warmup_frames = warmup_frames # frames to wait before detecting freeze frame. 10fps * 180s = 1800
         self.last_stored_frame = None
         self.last_stored_index = -frame_interval  # Initialize with -interval to ensure the first frame gets stored
+        self.NO_DATA=0
 
     def alert_human(self):
         '''
@@ -44,35 +53,39 @@ class attackDetector():
         - tracker_centroids: List of centroids from the tracking algorithm.
         
         '''
-        # Check for motion attacks (e.g., frame freeze)
-        if self.prev_centroids and frame_index > self.warmup_frames:
-            for prev, curr in zip(self.prev_centroids, centroids):
-                distance = np.linalg.norm(np.array(prev) - np.array(curr))
-                if distance < 0.2:
-                    self.attacks['motion'].append(frame_index)
-                    self.alert_human()
-                    break
+        # # Check for motion attacks (e.g., frame freeze)
+        # if self.prev_centroids:
+        #     for prev, curr in zip(self.prev_centroids, centroids):
+        #         distance = np.linalg.norm(np.array(prev) - np.array(curr))
+        #         if distance < 0.2:
+        #             self.attacks['motion'].append(frame_index)
+        #             self.alert_human()
+        #             break
         
         self.prev_centroids = centroids
+        attack = AttackType.NONE
 
         # Check for occlusion of camera attacks
-        occlusion_score = self._detect_occlusion(frame, detections)
+        occlusion_score = self._detect_occlusion(frame,detections)
         if occlusion_score: # when occulsion score, bc it is 0 or 1
             self.attacks['occlusion'].append(frame_index)
             self.alert_human()
+            attack = AttackType.OCCLUSION
 
-        # Spoofing detection
-        if self._detect_spoofing(detections):
+        elif self._detect_spoofing(detections):
             self.attacks['spoofing'].append(frame_index)
             self.alert_human()
+            attack = AttackType.SPOOFING
 
-         # Tampering detection (check against previous frame)
-        if frame_index - self.last_stored_index >= self.frame_interval:
+        elif frame_index - self.last_stored_index >= self.frame_interval:
             if self.last_stored_frame is not None and self._detect_tampering(frame, self.last_stored_frame):
                 self.attacks['tampering'].append(frame_index)
                 self.alert_human()
+                attack = AttackType.TAMPERING
 
         self.prev_frame = frame
+
+        return attack
 
 
     def _detect_occlusion(self, frame, detections):
@@ -99,7 +112,7 @@ class attackDetector():
         Detect spoofing based on sudden appearance of objects.
         Returns True if spoofing is detected, otherwise False.
         """
-        return len(detections) > 8
+        return len(detections) > 7
     
 
     def _detect_tampering(self, current_frame, prev_frame):

@@ -11,7 +11,7 @@ class RAITEDataset(Dataset):
 
     Expects bbox annotations in format [class - center_x - center_y - width - height]
     '''
-    def __init__(self, dir_path, ann_path, width, height, classes, transform=None):
+    def __init__(self, dir_path, ann_path, width, height, classes: dict[int, int], transform=None):
         self.transform = transform
         self.dir_path = dir_path
         self.ann_path = ann_path
@@ -51,6 +51,8 @@ class RAITEDataset(Dataset):
         with open(ann_path) as f:
             for line in f:
                 label, x_center, y_center, width, height = map(float, line.split())
+                label = float(self.classes[int(label)])
+
                 # Convert normalized bbox (center, width, height) to (xmin, ymin, xmax, ymax)
                 xmin = (x_center - width / 2) * original_width
                 ymin = (y_center - height / 2) * original_height

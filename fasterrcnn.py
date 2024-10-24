@@ -43,9 +43,18 @@ start_time = time.time()
 
 # Custom dataset loader for your own data
 transform = transforms.Compose([transforms.ToTensor()])
-classes = 2
-dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/2024-raite-ml/data/drone_dataset_revised_20241023/train/images"
-ann_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/2024-raite-ml/data/drone_dataset_revised_20241023/train/labels" 
+number_of_classes = 2
+dir_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/2024-raite-ml/data/ugv_dataset_comp_v3_I_fixed_it/train/images"
+ann_path = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/2024-raite-ml/data/ugv_dataset_comp_v3_I_fixed_it/train/labels" 
+classes = {
+    0: 0,
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0, 
+    5: 1,
+    6: 0,
+}
 
 width = 640
 height = 640
@@ -57,7 +66,7 @@ model = fasterrcnn_resnet50_fpn(pretrained=True)
 
 # Replace the head of the network for your number of classes (e.g., 2: drone or not drone)
 in_features = model.roi_heads.box_predictor.cls_score.in_features
-model.roi_heads.box_predictor = FastRCNNPredictor(in_features, classes)
+model.roi_heads.box_predictor = FastRCNNPredictor(in_features, number_of_classes)
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model.to(device)
@@ -104,7 +113,7 @@ for epoch in range(num_epochs):
     epoch_times.append(epoch_time)
 
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss:.4f}, Time: {epoch_time:.2f} seconds")
-    torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_comp_vfinal.pth')
+    torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/drones/fasterrcnn_resnet50_fpn_ugv_robust_v1.pth')
 # Calculate total training time and average time per epoch
 total_training_time = time.time() - start_time
 avg_time_per_epoch = sum(epoch_times) / num_epochs
@@ -114,7 +123,7 @@ hours, minutes = divmod(total_training_time // 60, 60)
 send_email(hours, minutes, avg_time_per_epoch)
 
 # Save the model after training
-torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_drone_comp_vfinal.pth')
+torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/drones/fasterrcnn_resnet50_fpn_ugv_robust_v1.pth')
 
 # Plotting the loss per epoch
 plt.figure()
