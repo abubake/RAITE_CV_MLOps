@@ -114,7 +114,7 @@ hours, minutes = divmod(total_training_time // 60, 60)
 send_email(hours, minutes, avg_time_per_epoch)
 
 # Save the model after training
-torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_drone_comp_vfinal.pth')
+torch.save(model, '/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_comp_vfinal.pth')
 
 # Plotting the loss per epoch
 plt.figure()

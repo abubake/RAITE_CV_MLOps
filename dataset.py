@@ -109,7 +109,7 @@ class RAITEDataset(Dataset):
 if __name__ == '__main__':
     dataset = RAITEDataset('data/archive/drone_dataset/train/images', 
                            'data/archive/drone_dataset/train/labels', 
-                           200, 200, 2)
+                           200, 200, {0: 0, 4: 4, 6: 6})
 
     image_resized, target, original_image, boxes = dataset[49]  
     

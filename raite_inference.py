@@ -14,7 +14,7 @@ import numpy as np
 device = 'cuda'
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.Resize((400, 400)),
+    transforms.Resize((200, 200)),
     transforms.ToTensor()
 ])
 
@@ -49,12 +49,12 @@ centerTracker = CentroidTracker(maxDisappeared=5)
 anomalyDetector = AttackDetector(brightness_threshold=50)
 
 # Load the weights
-model = torch.load('/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_ugv_v5.pth')
+model = torch.load('/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_comp_vfinal.pth')
 model.to(device)
 model.eval()
 
-start_index = 0 # change based off of range we are looking at
-end_index = 5
+start_index = 25 # change based off of range we are looking at
+end_index = 35
 with torch.no_grad():
     predictions = model(test_images[start_index:end_index]) # or w/o list, test_images[:N]
 
@@ -63,6 +63,7 @@ for prediction in predictions:
 
 # Visualize bounding boxes on original images
 score_list = []
+attacks_list = []
 for i, prediction in enumerate(predictions):
     # Extract bounding boxes, labels, and scores
     boxes = prediction['boxes'].cpu().numpy()  # Move to CPU and convert to NumPy
@@ -95,23 +96,24 @@ for i, prediction in enumerate(predictions):
             cv2.putText(original_images[i+start_index], label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 5)
     
     # For the bounding boxes, find the centerpoints:
-    #centerTracker.update(boxes=rescaled_boxes)
+    centerTracker.update(boxes=rescaled_boxes)
     
     # Draw centerpoints and IDs on the original image
-    # centroids = []
-    # for objectID, centroid in centerTracker.objects.items():
-    #     # Draw the centroid
-    #     cx, cy = centroid  # Assuming centroid is in the form (cx, cy)
-    #     centroids.append(centroid)
-    #     cv2.circle(original_images[i+start_index], (int(cx), int(cy)), 7, (0, 0, 255), -1)  # Draw the centerpoint in blue
+    centroids = []
+    for objectID, centroid in centerTracker.objects.items():
+        # Draw the centroid
+        cx, cy = centroid  # Assuming centroid is in the form (cx, cy)
+        centroids.append(centroid)
+        cv2.circle(original_images[i+start_index], (int(cx), int(cy)), 7, (0, 0, 255), -1)  # Draw the centerpoint in blue
         
-    #     # Put the ID text next to the centroid
-    #     cv2.putText(original_images[i+start_index], f"ID: {objectID}", (int(cx), int(cy) - 15), 
-    #             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
+        # Put the ID text next to the centroid
+        cv2.putText(original_images[i+start_index], f"ID: {objectID}", (int(cx), int(cy) - 15), 
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
     
     # tests detection of attacks on the given set of frames
-    #anomalyDetector.detect_attack(frame_index=i+start_index, frame=original_images[i+start_index], detections=rescaled_boxes, centroids=centroids)
-
+    attacks = anomalyDetector.detect_attack(frame_index=i+start_index, frame=original_images[i+start_index],
+                                             detections=rescaled_boxes, centroids=centroids)
+    attacks_list.append(attacks)
 
 # Display the images with bounding boxes
 for i, img in enumerate(original_images[start_index:end_index]):
@@ -125,4 +127,5 @@ for i, img in enumerate(original_images[start_index:end_index]):
     plt.show()
 
 print(np.mean(score_list))
-print(anomalyDetector.attacks)
+# print(anomalyDetector.attacks)
+print(attacks_list)
