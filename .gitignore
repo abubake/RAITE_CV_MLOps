@@ -1,4 +1,5 @@
 data/
+datasets/
 models/
 models/fasterrcnn_resnet50_fpn_labData.pth
 models/fasterrcnn_resnet50_fpn.pth

@@ -3,6 +3,10 @@ import numpy as np
 from torchvision.ops import box_iou
 import matplotlib.pyplot as plt
 from dataset import RAITEDataset
+from argparse import ArgumentParser
+from arguments import EvalParams
+
+import sys
 
 import os
 import json
@@ -469,12 +473,18 @@ if __name__ == '__main__':
     #                        400, 400, 2, {0:0, 4:4, 6:6})
     # model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v3.pth')
     # evaluator = DetectionEvaluator(model=model, dataset=dataset, predictions_json=None)
+    # Set up command line argument parser
+    
+    parser = ArgumentParser(description="evaluation script parameters")
+    eval_params = EvalParams(parser)
+    args = parser.parse_args(sys.argv[1:])
+    eval_args = eval_params.extract(args)
 
-    evaluator = DetectionEvaluator(model=None, dataset=None, predictions_json="fasterrcnn_detections_with_targets.json")
+    # If only JSON is provided:
+    evaluator = DetectionEvaluator(model=None, dataset=None, predictions_json=eval_args.json)
     ap_results, area_results = evaluator.evaluate()
     f1 = evaluator.find_highest_f1_score(ap_results)
     print(f1)
-
     evaluator.plot_precision_recall_curve(ap_results, savePath="/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify",highlight_point=f1)
 
     #print(ap_results)

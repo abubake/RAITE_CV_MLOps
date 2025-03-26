@@ -1,3 +1,31 @@
+# RAITE Object detection evaluator
+
+We provide software for evaluating object detection model performance under several scenarios for detecting both drones and several ground robots.
+
+Performance is evaluated using mAP @ IOU of 50% and 75% overlap between ground truth and predicted bounding boxes.
+
+We provide the following test cases:
+- autonomy park
+- 
+
+to evaluate the results of a model from only a json file, use command:
+- python evaluate.py --json scratch/fasterrcnn_detections_with_targets.json
+
+to evaluate on all test sets for a drone or ugv model,
+- this command
+
+
+## How to use for model evaluation:
+
+
+- contains several test sets with ground truth to evaluate models
+- 
+
+
+### Questions
+* where should we host test set data?
+* do we have all the tests we want for the paper?
+
 # RAITE Scenario 1 Dataset
 
 This dataset was collected over three days at RAITE 2024 by the Blue Team (University of Florida). It includes data from **51 attacks** to the vision system, spanning **20 unique attack scenarios** (e.g., "smoke," "laser," "blanket on robot," "cotton balls"). A detailed overview of the attacks can be found in [this Google Sheet](https://docs.google.com/spreadsheets/d/1XFUwoL-b02kC95PayJgFLPnCwcbyNPex/edit?usp=sharing&ouid=108502102907068954075&rtpof=true&sd=true). The same Google Sheet is also included in the dataset directory for convenience.
