@@ -11,9 +11,23 @@ We provide the following test cases:
 to evaluate the results of a model from only a json file, use command:
 - python evaluate.py --json scratch/fasterrcnn_detections_with_targets.json
 
-to evaluate on all test sets for a drone or ugv model,
-- this command
+to evaluate a model given a .pth file and dataset object, use
+- python evaluate.py --model_path /home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_ugv_v2.pth --dataset_path /home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/ugv/t2_autonomyPark150
 
+This will also determine the best IoU threshold and confidence threshold which yields optimal precision recall trade-off.
+
+to evaluate on all test sets for a drone or ugv model,
+- this command:
+python evaluate.py --model_path /home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_ugv_v2.pth --evaluation_set_path /home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/test_sets/ugv --label_mappings '{1:1}'
+
+Full parameters to specify:
+
+python evaluate.py --model_path /home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth --evaluation_set_path test --label_mappings '{1:1}' --Width 400 --Height 400 --results_path results
+
+### Help?
+To access the help menu, enter 'python evaluate.py --help' which will give you a description of each of the input parameters like below:
+
+[TODO] add all input prarameters once complete.
 
 ## How to use for model evaluation:
 

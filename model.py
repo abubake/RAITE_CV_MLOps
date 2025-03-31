@@ -20,11 +20,3 @@ class DroneClassifier(nn.Module):
         x = self.fc2(x)
         x = self.sigmoid(x)  # Binary classification
         return x
-
-class PeopleClassifier(DroneClassifier):
-    # Inherit from DroneClassifier (same architecture)
-    pass
-
-class GroundRobotClassifier(DroneClassifier):
-    # Inherit from DroneClassifier (same architecture)
-    pass

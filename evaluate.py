@@ -1,3 +1,7 @@
+import os
+import sys
+import json
+
 import torch
 import numpy as np
 from torchvision.ops import box_iou
@@ -5,11 +9,6 @@ import matplotlib.pyplot as plt
 from dataset import RAITEDataset
 from argparse import ArgumentParser
 from arguments import EvalParams
-
-import sys
-
-import os
-import json
 
 class DetectionEvaluator:
     """
@@ -30,12 +29,13 @@ class DetectionEvaluator:
     Raises:
     - ValueError: If neither a model nor predictions JSON is provided.
     """
-    def __init__(self, model=None, dataset=None, predictions_json=None,
+    def __init__(
+        self, model=None, dataset=None, predictions_json=None,
                  iou_thresholds=[0.5, 0.75],
                  confidence_thresholds=np.arange(0,1,.1).tolist(),  #[.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0],
                  area_ranges={'S': [0, 32**2], 'M': [32**2, 96**2], 'L': [96**2, np.inf]},
-                 display_predictions=False):
-        
+                 display_predictions=False
+                 ):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.display_predictions = display_predictions
         self.iou_thresholds = iou_thresholds
@@ -50,20 +50,17 @@ class DetectionEvaluator:
         else:
             raise ValueError("Either a model or predictions_json must be provided for evaluation.")
 
-
     def _initialize_with_model(self, model, dataset):
         """Initialize evaluator with a model and dataset."""
         self.model = model.to(self.device)
         self.dataset = dataset
         self.predictions = None
 
-
     def _initialize_with_json(self, predictions_json):
         """Initialize evaluator with precomputed predictions from JSON."""
         self.model = None
         self.dataset = None
         self.predictions = self._load_predictions_from_json(predictions_json)
-
 
     def _load_predictions_from_json(self, predictions_json):
         """Load predictions from a JSON file or dictionary.
@@ -111,7 +108,7 @@ class DetectionEvaluator:
 
     def compute_tp_fp_fn_for_all_params(self):
         '''
-        Takes in the iou thresholds and interval of confidence score to evaluate across, and computes dicitionary of
+        Takes in the iou thresholds and interval of confidence score to evaluate across, and computes dictionary of
         TP, FP, FN.
 
         Returns:
@@ -173,8 +170,7 @@ class DetectionEvaluator:
                             res_dict[iou_thresh][confidence_thresh]['FN'] += fn
 
                             if self.display_predictions:
-                                self._display_predictions(image, predictions[0], target)
-                    
+                                self._display_predictions(image, predictions[0], target) 
         return res_dict
     
 
@@ -272,9 +268,7 @@ class DetectionEvaluator:
 
         # Add the AP results to the original res_dict
         res_dict['ap_results'] = ap_results
-
-        return res_dict
-        
+        return res_dict        
 
     def _calculate_area_based_ap(self):
         """
@@ -338,7 +332,6 @@ class DetectionEvaluator:
             return 0  # Avoid division by zero
         return 2 * (precision * recall) / (precision + recall)
     
-
     def plot_precision_recall_curve(self, ap_results_dict, savePath, highlight_point=None):
         """
         Plots separate Precision-Recall (PR) curves for each IoU threshold and highlights the point
@@ -408,14 +401,10 @@ class DetectionEvaluator:
             # Close the figure to free up memory
             plt.close()
 
-
-
-
-###########################
-
-def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth', dir="data/archive/test_sets/ugv"):
+def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth',
+                           eval_set_path="data/archive/test_sets/ugv", results_path="results", width=400, height=400, class_label_mapping={1:1}):
     '''
-    
+    Evaluates all test sets specified.
     '''
     model_name = os.path.basename(model_path)
     model_name = os.path.splitext(model_name)[0]
@@ -423,10 +412,10 @@ def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v
 
     average_precisions_50 = []
     average_precisions_75 = []
-    folder_paths = [os.path.join(dir, name) for name in os.listdir(dir) if os.path.isdir(os.path.join(dir, name))]
+    folder_paths = [os.path.join(eval_set_path, name) for name in os.listdir(eval_set_path) if os.path.isdir(os.path.join(eval_set_path, name))]
     for path in folder_paths:
 
-        dataset = RAITEDataset(f'{path}/images', f'{path}/labels',400 , 400, 2)
+        dataset = RAITEDataset(f'{path}/images', f'{path}/labels', width, height, class_label_mapping)
         evaluator = DetectionEvaluator(model, dataset)
         ap_results, area_results = evaluator.evaluate()
 
@@ -434,26 +423,26 @@ def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v
         # or results and print results to it.
         folder_name = os.path.basename(path)
 
-        dir_name = os.path.dirname(dir)
-        base_name = os.path.basename(dir)
-        results_dir = f'{dir_name}/results/{base_name}/{model_name}'
+        dir_name = os.path.dirname(eval_set_path)
+        base_name = os.path.basename(eval_set_path)
+        #results_dir = f'{dir_name}/results/{base_name}/{model_name}'
+        results_dir = f'{results_path}/{base_name}/{model_name}'
         os.makedirs(results_dir, exist_ok=True)
 
         fp = os.path.join(results_dir, folder_name) # makes a folder for each test for the model
         os.makedirs(fp, exist_ok=True)
-        result_file = os.path.join(fp, "results.txt") # results file for that test
+        result_file = os.path.join(fp, "results.json") # results file for that test
 
         # ALL PLOTS HERE:
         # Add all plots to the results folder for each test
         evaluator.plot_precision_recall_curve(ap_results, savePath=fp)
 
         # DICTIONARY DATA HERE:
-        # Dump dictionary into the text file.
+        # Dump dictionary into the json file.
         with open(result_file, 'w') as file:
             json.dump(ap_results, file, indent=4)
 
         # SAVE AVERAGE PRECISION FOR TEST TO BE USED FOR mAP
-
         average_precisions_50.append(ap_results['ap_results'][0.5]['final_ap'])
         average_precisions_75.append(ap_results['ap_results'][0.75]['final_ap'])
 
@@ -468,28 +457,30 @@ def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v
 
     
 if __name__ == '__main__':
-    # dataset = RAITEDataset('data/archive/test_sets/ugv/t2_autonomyPark150/images', 
-    #                        'data/archive/test_sets/ugv/t2_autonomyPark150/labels', 
-    #                        400, 400, 2, {0:0, 4:4, 6:6})
-    # model = torch.load('models/ugvs/fasterrcnn_resnet50_fpn_ugv_v3.pth')
-    # evaluator = DetectionEvaluator(model=model, dataset=dataset, predictions_json=None)
-    # Set up command line argument parser
-    
     parser = ArgumentParser(description="evaluation script parameters")
     eval_params = EvalParams(parser)
     args = parser.parse_args(sys.argv[1:])
     eval_args = eval_params.extract(args)
 
-    # If only JSON is provided:
-    evaluator = DetectionEvaluator(model=None, dataset=None, predictions_json=eval_args.json)
-    ap_results, area_results = evaluator.evaluate()
-    f1 = evaluator.find_highest_f1_score(ap_results)
-    print(f1)
-    evaluator.plot_precision_recall_curve(ap_results, savePath="/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify",highlight_point=f1)
-
-    #print(ap_results)
-    # print(area_results)
-    #evaluate_all_test_sets(model_path='models/drones/fasterrcnn_resnet50_fpn_drone_v3.pth', dir="data/archive/test_sets/drone")
-
-    # evaluate_all_test_sets(model_path='models/drones/fasterrcnn_resnet50_fpn_drone_comp_v1.pth',
-    #  dir="data/archive/test_sets/drone")
+    # [TODO] make this a case statement
+    if eval_args.json:  # If only JSON is provided:
+        evaluator = DetectionEvaluator(model=None, dataset=None, predictions_json=eval_args.json)
+        ap_results, area_results = evaluator.evaluate()
+        f1 = evaluator.find_highest_f1_score(ap_results)
+        print(f1)
+        evaluator.plot_precision_recall_curve(ap_results, savePath=eval_args.results_path,highlight_point=f1)
+    elif eval_args.dataset_path: # Requires model path, dataset, and class label mappings
+        dataset = RAITEDataset(eval_args.dataset_path + '/images', 
+                           eval_args.dataset_path + '/labels', 
+                           eval_args.Width, eval_args.Height, eval_args.label_mappings) # {0:0, 4:4, 6:6}
+        model = torch.load(eval_args.model_path)
+        evaluator = DetectionEvaluator(model=model, dataset=dataset, predictions_json=None)
+        ap_results, area_results = evaluator.evaluate()
+        print(ap_results)
+        f1 = evaluator.find_highest_f1_score(ap_results)
+        print(f1)
+        evaluator.plot_precision_recall_curve(ap_results, savePath=eval_args.results_path, highlight_point=f1)
+    else: # If evaluation set (multiple datasets all on one model)    
+        evaluate_all_test_sets(model_path=eval_args.model_path, eval_set_path=eval_args.evaluation_set_path,
+                               results_path=eval_args.results_path, width=eval_args.Width, height=eval_args.Height,
+                               class_label_mapping=eval_args.label_mappings)

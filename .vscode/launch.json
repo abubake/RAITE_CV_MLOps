@@ -7,9 +7,18 @@
             "request": "launch",
             "program": "evaluate.py",  // Replace with the path to your script if not in the root folder
             "console": "integratedTerminal",
-            "args": [
-                "--json", "scratch/fasterrcnn_detections_with_targets.json",
+            // "args": [
+            //     "--json", "scratch/fasterrcnn_detections_with_targets.json",
 
+            // ]
+            "args": [
+                "-m", "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth",
+                "-e", "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/test",
+                "--evaluation_set_path", "test",
+                "--label_mappings", "{1:1}",
+                "--Width", "400",
+                "--Height", "400",
+                "--results_path", "results"
             ]
             //,"pythonPath": "/path/to/conda/env/bin/python"  // Replace with the path to your Conda environment's Python executable
         }
