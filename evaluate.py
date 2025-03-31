@@ -13,7 +13,7 @@ import numpy as np
 from torchvision.ops import box_iou
 import matplotlib.pyplot as plt
 
-from dataset import RAITEDataset
+from RAITEDataset import RAITEDataset
 from arguments import GroupParams
 from arguments import EvalParams
 
@@ -365,14 +365,14 @@ class DetectionEvaluator:
                 recall = res[1]
 
                 # Calculate F1 score
-                f1 = self.f1_score(precision=precision, recall=recall)
+                f1_val = self.f1_score(precision=precision, recall=recall)
 
                 # Update if this is the highest F1 score found so far
-                if f1 > max_f1:
-                    max_f1 = f1
+                if f1_val > max_f1:
+                    max_f1 = f1_val
                     best_result.update(
                         {
-                            "f1_score": f1,
+                            "f1_score": f1_val,
                             "precision": precision,
                             "recall": recall,
                             "iou_threshold": iou_thresh,
@@ -389,15 +389,16 @@ class DetectionEvaluator:
 
     def plot_precision_recall_curve(
         self, ap_results_dict, savePath, highlight_point=None
-    ):
+    ) -> None:
         """
         Plots separate Precision-Recall (PR) curves for each IoU threshold and highlights the point
         with the highest F1 score if provided.
 
         Args:
-            ap_results_dict (dict): Dictionary containing precision and recall results at different IoU and confidence thresholds.
-            savePath (str): Directory path to save the plot.
-            highlight_point (dict, optional): Dictionary with keys 'f1_score', 'precision', 'recall',
+            ap_results_dict : Dictionary containing precision and recall
+            results at different IoU and confidence thresholds.
+            savePath: Directory path to save the plot.
+            highlight_point: Dictionary with keys 'f1_score', 'precision', 'recall',
                                             'iou_threshold', and 'confidence_threshold' to mark
                                             the best F1 score on the plot.
         """
@@ -417,8 +418,6 @@ class DetectionEvaluator:
                 res = ap_results_dict["ap_results"][iou_thresh][conf_thresh]
                 precisions.append(res[0])
                 recalls.append(res[1])
-
-            # Plot the PR curve for the current IoU threshold
             plt.plot(
                 recalls,
                 precisions,
@@ -428,8 +427,6 @@ class DetectionEvaluator:
                 linewidth=2,
                 zorder=1,
             )
-
-            # Highlight the point with the highest F1 score, if provided and matches the current IoU
             if highlight_point and highlight_point["iou_threshold"] == iou_thresh:
                 plt.scatter(
                     highlight_point["recall"],
@@ -442,8 +439,6 @@ class DetectionEvaluator:
                     zorder=3,
                     label=f'Best F1: {highlight_point["f1_score"]:.2f}',
                 )
-
-            # Add labels, title, and legend
             plt.xlabel("Recall", fontsize=15)
             plt.ylabel("Precision", fontsize=15)
             plt.xticks(fontsize=12)
@@ -453,8 +448,6 @@ class DetectionEvaluator:
                 fontsize=15,
                 weight="bold",
             )
-
-            # Customize legend with larger font and shadow
             plt.legend(
                 loc="lower left",
                 fontsize=15,
@@ -462,27 +455,19 @@ class DetectionEvaluator:
                 fancybox=True,
                 framealpha=0.8,
             )
-
-            # Customize the grid lines to make them dashed and light gray
             plt.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.7)
-
-            # Set axis limits to fit the full PR curve range
             plt.xlim(0, 1)
             plt.ylim(0, 1)
-
             # Save the plot with a unique filename for each IoU threshold
             plt.savefig(f"{savePath}/pr_curve_iou_{iou_thresh}.png")
-
-            # Close the figure to free up memory
             plt.close()
-
 
 def evaluate_all_test_sets(
     model_path : Optional[str] = "models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth",
     eval_set_path : Optional[str] = "data/archive/test_sets/ugv",
     results_path : Optional[str] = "results",
     width : int = 400,
-    height : int =400,
+    height : int = 400,
     class_label_mapping : Dict[int, int] = {1: 1}
 ) -> None:
     """
@@ -525,7 +510,7 @@ def evaluate_all_test_sets(
 
         # ALL PLOTS HERE:
         # Add all plots to the results folder for each test
-        evaluator.plot_precision_recall_curve(ap_results, savePath=fp)
+        test_evaluator.plot_precision_recall_curve(ap_results, savePath=fp)
 
         # DICTIONARY DATA HERE:
         # Dump dictionary into the json file.
@@ -552,8 +537,6 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
     eval_args: GroupParams = eval_params.extract(args)
 
-
-    # [TODO] make this a case statement
     if eval_args.json:  # If only JSON is provided:
         evaluator = DetectionEvaluator(
             model=None, dataset=None, predictions_json=eval_args.json
