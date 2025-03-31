@@ -1,9 +1,17 @@
 from argparse import ArgumentParser
 import ast
-
+from typing import Dict, Optional
 
 class GroupParams:
-    pass
+    """Class to store parsed arguments."""
+    model_path: Optional[str]
+    dataset_path: Optional[str]
+    evaluation_set_path: Optional[str]
+    json: Optional[str]
+    label_mappings: Dict[int, int]
+    results_path: Optional[str]
+    Width: int
+    Height: int
 
 class ParamGroup:
     def __init__(self, group):
@@ -42,22 +50,25 @@ class ParamGroup:
         return out
 
 class EvalParams(ParamGroup):
+    """Evaluation parameter group."""
     def __init__(self, parser: ArgumentParser):
         group = parser.add_argument_group("Evaluation parameters")
-        self._model_path = None
-        self._dataset_path = None
-        self._evaluation_set_path = None
-        self.json = None
-        self._label_mappings = {1:1} # default
-        self._Width = 400
-        self._Height = 400
-        self._results_path = None
-        self._help = {
+        self._model_path: Optional[str] = None
+        self._dataset_path: Optional[str] = None
+        self._evaluation_set_path: Optional[str] = None
+        self.json: Optional[str] = None
+        self._label_mappings: Dict[int, int] = {1: 1}  # default mapping
+        self._Width: int = 400
+        self._Height: int = 400
+        self._results_path: Optional[str] = None
+        self._help: Dict[str, str] = {
             "dataset_path": "Path to the dataset to be evaluated. Must contain a folder named images, and a folder named labels (optional)",
             "model_path": "Path to the trained model directory (optional)",
-            "evaluation_set_path": "Path to a directory containing multiple datasets of the format required by dataset_path. Use for evaluatation of multiple datasets on the same model, comparing results.",
+            "evaluation_set_path": "Path to a directory containing multiple datasets of the format required by dataset_path. Use for evaluation of multiple datasets on the same model, comparing results.",
             "label_mappings": "Dictionary of class label keys, and values they should map to. This is used to compress multiple classes together if needed. Otherwise, map keys to values as appear in the labels folder for your dataset. Ex: {1:1, 2:2}",
             "results_path": "Path to directory for evaluation results",
+            "Width": "Image input width",
+            "Height": "Image input height",
             "json": "Path to the detection JSON file (optional)"
         }
         super().__init__(group)

@@ -1,42 +1,56 @@
 import os
 import sys
 import json
+from typing import Union
+from typing import List
+from typing import Dict
+from typing import Optional
+from argparse import ArgumentParser
 
 import torch
+import torch.nn as nn
 import numpy as np
 from torchvision.ops import box_iou
 import matplotlib.pyplot as plt
+
 from dataset import RAITEDataset
-from argparse import ArgumentParser
+from arguments import GroupParams
 from arguments import EvalParams
 
+
 class DetectionEvaluator:
-    """
+    """ Evaluates object detection models given a dataset using average percision (AP), mAP, anf f1-score. 
+    
     DetectionEvaluator provides flexibility to evaluate object detection models
     with either a trained model or precomputed predictions from a JSON file.
     It supports custom IoU and confidence thresholds, and configurable area
     ranges for small, medium, and large object categories.
 
     Args:
-    - model (torch.nn.Module, optional): The object detection model, e.g., Faster R-CNN.
-    - dataset (Dataset, optional): The dataset object (e.g., RAITEDataset).
-    - predictions_json (str or dict, optional): Path to or dictionary of precomputed predictions.
-    - iou_thresholds (list of float, optional): IoU thresholds to evaluate AP at.
-    - confidence_thresholds (list of float, optional): List of confidence thresholds.
-    - area_ranges (dict, optional): Dictionary defining area ranges for small, medium, and large objects.
-    - display_predictions (bool, optional): Whether to display predictions during evaluation.
+        model: The object detection model, e.g., Faster R-CNN.
+        dataset The dataset object (e.g., RAITEDataset).
+        predictions_json: Path to or dictionary of precomputed predictions.
+        iou_thresholds: IoU thresholds to evaluate AP at.
+        confidence_thresholds: List of confidence thresholds.
+        area_ranges: Dictionary defining area ranges for small, medium, and large objects.
+        display_predictions: Whether to display predictions during evaluation.
+
 
     Raises:
     - ValueError: If neither a model nor predictions JSON is provided.
     """
+
     def __init__(
-        self, model=None, dataset=None, predictions_json=None,
-                 iou_thresholds=[0.5, 0.75],
-                 confidence_thresholds=np.arange(0,1,.1).tolist(),  #[.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0],
-                 area_ranges={'S': [0, 32**2], 'M': [32**2, 96**2], 'L': [96**2, np.inf]},
-                 display_predictions=False
-                 ):
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self,
+        model: Optional[nn.Module] = None,
+        dataset: Optional[RAITEDataset] = None,
+        predictions_json: Optional[Union[str, dict]] = None,
+        iou_thresholds: Optional[List[float]] = None,
+        confidence_thresholds: Optional[List[float]] = None,
+        area_ranges: Optional[Dict[str, List[float]]] = None,
+        display_predictions: bool = False,
+    ):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.display_predictions = display_predictions
         self.iou_thresholds = iou_thresholds
         self.confidence_thresholds = confidence_thresholds
@@ -48,7 +62,9 @@ class DetectionEvaluator:
         elif predictions_json is not None:
             self._initialize_with_json(predictions_json)
         else:
-            raise ValueError("Either a model or predictions_json must be provided for evaluation.")
+            raise ValueError(
+                "Either a model or predictions_json must be provided for evaluation."
+            )
 
     def _initialize_with_model(self, model, dataset):
         """Initialize evaluator with a model and dataset."""
@@ -72,13 +88,14 @@ class DetectionEvaluator:
         - dict: Loaded predictions data.
         """
         if isinstance(predictions_json, str):
-            with open(predictions_json, 'r') as file:
+            with open(predictions_json, "r") as file:
                 return json.load(file)
         elif isinstance(predictions_json, dict):
             return predictions_json
         else:
-            raise TypeError("predictions_json must be a file path (str) or a dictionary.")
-
+            raise TypeError(
+                "predictions_json must be a file path (str) or a dictionary."
+            )
 
     def evaluate(self):
         """
@@ -91,67 +108,81 @@ class DetectionEvaluator:
             predictions = self.predictions
             res_dict = self.compute_tp_fp_fn_for_all_params()
             res_dict = self._calculate_ap(res_dict)
-            area_based_results = None # TODO: implement
+            area_based_results = None  # TODO: implement
         else:
             self.model.eval()
-            
+
             res_dict = self.compute_tp_fp_fn_for_all_params()
 
             # Compute AP at different IoU thresholds
             res_dict = self._calculate_ap(res_dict)
-            
+
             # Compute area-based AP (AS, AM, AL)
             area_based_results = self._calculate_area_based_ap()
 
         return res_dict, area_based_results
-    
 
     def compute_tp_fp_fn_for_all_params(self):
-        '''
+        """
         Takes in the iou thresholds and interval of confidence score to evaluate across, and computes dictionary of
         TP, FP, FN.
 
         Returns:
             - Dictionary for each IOU threshold and each score threshold.
-        '''
-        res_dict = {iou_thresh: {confidence_thresh: {'TP': 0, 'FP': 0, 'FN': 0} 
-                              for confidence_thresh in self.confidence_thresholds}
-                 for iou_thresh in self.iou_thresholds}
-        
+        """
+        res_dict = {
+            iou_thresh: {
+                confidence_thresh: {"TP": 0, "FP": 0, "FN": 0}
+                for confidence_thresh in self.confidence_thresholds
+            }
+            for iou_thresh in self.iou_thresholds
+        }
+
         if self.predictions is not None:
 
             for iou_thresh in self.iou_thresholds:
                 for confidence_thresh in self.confidence_thresholds:
                     for frame_id, data in self.predictions.items():
 
-                         # Define the device, e.g., 'cuda:0' if available
-                        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-                        
+                        # Define the device, e.g., 'cuda:0' if available
+                        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
                         # Convert prediction data to tensors on the correct device
-                        boxes_pred = torch.tensor(data['boxes'], device=device, dtype=torch.float32)
-                        scores_pred = torch.tensor(data['scores'], device=device, dtype=torch.float32)
-                        labels_pred = torch.tensor(data['labels'], device=device, dtype=torch.int64)
-                        
-                        predictions = [{
-                            'boxes': boxes_pred,
-                            'scores': scores_pred,
-                            'labels': labels_pred
-                        }]
-                        
+                        boxes_pred = torch.tensor(
+                            data["boxes"], device=device, dtype=torch.float32
+                        )
+                        scores_pred = torch.tensor(
+                            data["scores"], device=device, dtype=torch.float32
+                        )
+                        labels_pred = torch.tensor(
+                            data["labels"], device=device, dtype=torch.int64
+                        )
+
+                        predictions = [
+                            {
+                                "boxes": boxes_pred,
+                                "scores": scores_pred,
+                                "labels": labels_pred,
+                            }
+                        ]
+
                         # Convert target data to tensors on the correct device
-                        boxes_true = torch.tensor(data['target_boxes'], device=device, dtype=torch.float32)
-                        labels_true = torch.tensor(data['target_labels'], device=device, dtype=torch.int64)
-                        
-                        target = {
-                            'boxes': boxes_true,
-                            'labels': labels_true
-                        }
+                        boxes_true = torch.tensor(
+                            data["target_boxes"], device=device, dtype=torch.float32
+                        )
+                        labels_true = torch.tensor(
+                            data["target_labels"], device=device, dtype=torch.int64
+                        )
 
-                        tp, fp, fn = self._compute_tp_fp_fn(predictions, target, iou_thresh, confidence_thresh) # add predictions in right format
+                        target = {"boxes": boxes_true, "labels": labels_true}
 
-                        res_dict[iou_thresh][confidence_thresh]['TP'] += tp
-                        res_dict[iou_thresh][confidence_thresh]['FP'] += fp
-                        res_dict[iou_thresh][confidence_thresh]['FN'] += fn
+                        tp, fp, fn = self._compute_tp_fp_fn(
+                            predictions, target, iou_thresh, confidence_thresh
+                        )  # add predictions in right format
+
+                        res_dict[iou_thresh][confidence_thresh]["TP"] += tp
+                        res_dict[iou_thresh][confidence_thresh]["FP"] += fp
+                        res_dict[iou_thresh][confidence_thresh]["FN"] += fn
 
         else:
 
@@ -159,20 +190,23 @@ class DetectionEvaluator:
                 for confidence_thresh in self.confidence_thresholds:
                     for image, target, _, _ in self.dataset:
 
-                        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() # Convert from (H, W, C) to (C, H, W)
+                        image_tensor = (
+                            torch.from_numpy(image).permute(2, 0, 1).float()
+                        )  # Convert from (H, W, C) to (C, H, W)
 
                         with torch.no_grad():
                             predictions = self.model([image_tensor.to(self.device)])
-                            tp, fp, fn = self._compute_tp_fp_fn(predictions, target, iou_thresh, confidence_thresh)
+                            tp, fp, fn = self._compute_tp_fp_fn(
+                                predictions, target, iou_thresh, confidence_thresh
+                            )
 
-                            res_dict[iou_thresh][confidence_thresh]['TP'] += tp
-                            res_dict[iou_thresh][confidence_thresh]['FP'] += fp
-                            res_dict[iou_thresh][confidence_thresh]['FN'] += fn
+                            res_dict[iou_thresh][confidence_thresh]["TP"] += tp
+                            res_dict[iou_thresh][confidence_thresh]["FP"] += fp
+                            res_dict[iou_thresh][confidence_thresh]["FN"] += fn
 
                             if self.display_predictions:
-                                self._display_predictions(image, predictions[0], target) 
+                                self.display_predictions(image, predictions[0], target)
         return res_dict
-    
 
     def _compute_tp_fp_fn(self, predictions, target, iou_thresh, confidence_thresh):
         """
@@ -184,50 +218,63 @@ class DetectionEvaluator:
         Returns:
         - tp, fp, fn: True positives, false positives, and false negatives.
         """
-        boxes_pred = predictions[0]['boxes'].to(self.device)  # Move predictions to the same device
-        labels_pred = predictions[0]['labels'].to(self.device)  # Ensure labels are also on the same device
-        scores_pred = predictions[0]['scores'].to(self.device)  # Ensure scores are on the same device
+        boxes_pred = predictions[0]["boxes"].to(
+            self.device
+        )  # Move predictions to the same device
+        labels_pred = predictions[0]["labels"].to(
+            self.device
+        )  # Ensure labels are also on the same device
+        scores_pred = predictions[0]["scores"].to(
+            self.device
+        )  # Ensure scores are on the same device
 
-        boxes_true = target['boxes'].to(self.device)  # Move ground truth boxes to the same device
-        labels_true = target['labels'].to(self.device)
+        boxes_true = target["boxes"].to(
+            self.device
+        )  # Move ground truth boxes to the same device
+        labels_true = target["labels"].to(self.device)
 
         tp_count = 0
         fp_count = 0
         fn_count = 0
-        
-       #  this function operates on each image in the test set.
+
+        #  this function operates on each image in the test set.
 
         if len(boxes_pred) == 0:  # No predictions
             fn_count += len(boxes_true)  # All true boxes are false negatives
             return tp_count, fp_count, fn_count  # Return counts
-        
+
         if len(boxes_true) == 0:
             fp_count += len(boxes_pred)
             return tp_count, fp_count, fn_count
 
-        ious = box_iou(boxes_pred, boxes_true) # TODO: verify the logic here
+        ious = box_iou(boxes_pred, boxes_true)  # TODO: verify the logic here
         max_iou, max_idx = ious.max(dim=1)
 
         # Initialize a boolean array to keep track of matched ground truth boxes
-        matched_gt = torch.zeros(boxes_true.size(0), dtype=torch.bool, device=self.device)
+        matched_gt = torch.zeros(
+            boxes_true.size(0), dtype=torch.bool, device=self.device
+        )
 
-        for i, (score, iou, label_pred) in enumerate(zip(scores_pred, max_iou, labels_pred)):
+        for i, (score, iou, label_pred) in enumerate(
+            zip(scores_pred, max_iou, labels_pred)
+        ):
             if score > confidence_thresh:  # Use the provided confidence threshold
                 gt_idx = max_idx[i]
                 label_true = labels_true[gt_idx]
-               
+
                 if iou >= iou_thresh and label_pred == label_true:
                     tp_count += 1
                     matched_gt[gt_idx] = True  # Mark this ground truth box as matched
-                elif iou < iou_thresh and label_pred == label_true:  # Correct class but IoU less than threshold:
+                elif (
+                    iou < iou_thresh and label_pred == label_true
+                ):  # Correct class but IoU less than threshold:
                     fp_count += 1
                 else:
                     fp_count += 1
-        
-        fn_count = (len(boxes_true) - matched_gt.sum().item())
+
+        fn_count = len(boxes_true) - matched_gt.sum().item()
 
         return tp_count, fp_count, fn_count
-
 
     def _calculate_ap(self, res_dict):
         """
@@ -235,53 +282,59 @@ class DetectionEvaluator:
         """
         ap_results = {}
 
-        for i,iou_thresh in enumerate(self.iou_thresholds):
-            ap_results[iou_thresh] = {}  # Initialize a sub-dictionary for this IoU threshold
-        
+        for i, iou_thresh in enumerate(self.iou_thresholds):
+            ap_results[iou_thresh] = (
+                {}
+            )  # Initialize a sub-dictionary for this IoU threshold
+
             # Iterate through each confidence threshold
             ap_terms = []
             for i, confidence_thresh in enumerate(self.confidence_thresholds):
 
-                if i == (len(self.confidence_thresholds)-1): break
+                if i == (len(self.confidence_thresholds) - 1):
+                    break
                 # Retrieve TP, FP, FN counts for the current IoU and confidence threshold
-                tp_sum = res_dict[iou_thresh][confidence_thresh]['TP']
-                fp_sum = res_dict[iou_thresh][confidence_thresh]['FP']
-                fn_sum = res_dict[iou_thresh][confidence_thresh]['FN']
+                tp_sum = res_dict[iou_thresh][confidence_thresh]["TP"]
+                fp_sum = res_dict[iou_thresh][confidence_thresh]["FP"]
+                fn_sum = res_dict[iou_thresh][confidence_thresh]["FN"]
 
                 # Calculate precision and recall
                 precision = tp_sum / (tp_sum + fp_sum + 1e-10)
                 recall = tp_sum / (tp_sum + fn_sum + 1e-10)
 
-                 # Retrieve TP, FP, FN counts for the current IoU and confidence threshold
-                tp_sum = res_dict[iou_thresh][self.confidence_thresholds[i+1]]['TP']
-                fn_sum = res_dict[iou_thresh][self.confidence_thresholds[i+1]]['FN']
+                # Retrieve TP, FP, FN counts for the current IoU and confidence threshold
+                tp_sum = res_dict[iou_thresh][self.confidence_thresholds[i + 1]]["TP"]
+                fn_sum = res_dict[iou_thresh][self.confidence_thresholds[i + 1]]["FN"]
 
                 next_recall = tp_sum / (tp_sum + fn_sum)
 
                 # Calculate AP using the formula
-                ap_terms.append((recall - next_recall)*precision)
+                ap_terms.append((recall - next_recall) * precision)
 
                 # Store the AP result in the ap_results dictionary
-                ap_results[iou_thresh][confidence_thresh] = [precision, recall] # previously stored the result at each confidence
+                ap_results[iou_thresh][confidence_thresh] = [
+                    precision,
+                    recall,
+                ]  # previously stored the result at each confidence
 
-            ap_results[iou_thresh]['final_ap'] = np.sum(ap_terms)
+            ap_results[iou_thresh]["final_ap"] = np.sum(ap_terms)
 
         # Add the AP results to the original res_dict
-        res_dict['ap_results'] = ap_results
-        return res_dict        
+        res_dict["ap_results"] = ap_results
+        return res_dict
 
     def _calculate_area_based_ap(self):
         """
         Calculate area-based AP (small, medium, large objects).
         """
-        area_results = {'AS': 0, 'AM': 0, 'AL': 0}
+        area_results = {"AS": 0, "AM": 0, "AL": 0}
         # Calculate AP for each area range
         for area, (min_area, max_area) in self.area_ranges.items():
             # Area-specific logic goes here, similar to how AP is computed
             pass
 
         return area_results
-    
+
     def find_highest_f1_score(self, ap_results_dict):
         """
         Finds the highest F1 score across all IoU and confidence thresholds.
@@ -294,11 +347,11 @@ class DetectionEvaluator:
         """
         max_f1 = 0
         best_result = {
-            'f1_score': 0,
-            'precision': 0,
-            'recall': 0,
-            'iou_threshold': None,
-            'confidence_threshold': None
+            "f1_score": 0,
+            "precision": 0,
+            "recall": 0,
+            "iou_threshold": None,
+            "confidence_threshold": None,
         }
 
         for iou_thresh in self.iou_thresholds:
@@ -310,29 +363,33 @@ class DetectionEvaluator:
 
                 precision = res[0]
                 recall = res[1]
-                
+
                 # Calculate F1 score
                 f1 = self.f1_score(precision=precision, recall=recall)
-                
+
                 # Update if this is the highest F1 score found so far
                 if f1 > max_f1:
                     max_f1 = f1
-                    best_result.update({
-                        'f1_score': f1,
-                        'precision': precision,
-                        'recall': recall,
-                        'iou_threshold': iou_thresh,
-                        'confidence_threshold': conf_thresh
-                    })
+                    best_result.update(
+                        {
+                            "f1_score": f1,
+                            "precision": precision,
+                            "recall": recall,
+                            "iou_threshold": iou_thresh,
+                            "confidence_threshold": conf_thresh,
+                        }
+                    )
 
         return best_result
-    
+
     def f1_score(self, precision, recall):
         if precision + recall == 0:
             return 0  # Avoid division by zero
         return 2 * (precision * recall) / (precision + recall)
-    
-    def plot_precision_recall_curve(self, ap_results_dict, savePath, highlight_point=None):
+
+    def plot_precision_recall_curve(
+        self, ap_results_dict, savePath, highlight_point=None
+    ):
         """
         Plots separate Precision-Recall (PR) curves for each IoU threshold and highlights the point
         with the highest F1 score if provided.
@@ -354,7 +411,7 @@ class DetectionEvaluator:
 
             # Iterate over confidence thresholds
             for i, conf_thresh in enumerate(self.confidence_thresholds):
-                if i == (len(self.confidence_thresholds) - 1): 
+                if i == (len(self.confidence_thresholds) - 1):
                     break  # Stop at the last threshold
 
                 res = ap_results_dict["ap_results"][iou_thresh][conf_thresh]
@@ -362,62 +419,93 @@ class DetectionEvaluator:
                 recalls.append(res[1])
 
             # Plot the PR curve for the current IoU threshold
-            plt.plot(recalls, precisions, label=f'Confidence thresholds : Step size 0.001', marker='o', markersize=6, linewidth=2,  zorder=1)
+            plt.plot(
+                recalls,
+                precisions,
+                label=f"Confidence thresholds : Step size 0.001",
+                marker="o",
+                markersize=6,
+                linewidth=2,
+                zorder=1,
+            )
 
             # Highlight the point with the highest F1 score, if provided and matches the current IoU
-            if highlight_point and highlight_point['iou_threshold'] == iou_thresh:
+            if highlight_point and highlight_point["iou_threshold"] == iou_thresh:
                 plt.scatter(
-                    highlight_point['recall'],
-                    highlight_point['precision'],
-                    color='orange',
-                    s=200,              # Increase size for visibility
-                    marker='*',
-                    edgecolor='black',  # Add black edge for contrast
+                    highlight_point["recall"],
+                    highlight_point["precision"],
+                    color="orange",
+                    s=200,  # Increase size for visibility
+                    marker="*",
+                    edgecolor="black",  # Add black edge for contrast
                     linewidth=1,
                     zorder=3,
-                    label=f'Best F1: {highlight_point["f1_score"]:.2f}'
+                    label=f'Best F1: {highlight_point["f1_score"]:.2f}',
                 )
 
             # Add labels, title, and legend
-            plt.xlabel('Recall', fontsize=15)
-            plt.ylabel('Precision', fontsize=15)
+            plt.xlabel("Recall", fontsize=15)
+            plt.ylabel("Precision", fontsize=15)
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
-            plt.title(f'Precision-Recall Curve for IoU {iou_thresh}', fontsize=15, weight='bold')
+            plt.title(
+                f"Precision-Recall Curve for IoU {iou_thresh}",
+                fontsize=15,
+                weight="bold",
+            )
 
             # Customize legend with larger font and shadow
-            plt.legend(loc='lower left', fontsize=15, shadow=True, fancybox=True, framealpha=0.8)
+            plt.legend(
+                loc="lower left",
+                fontsize=15,
+                shadow=True,
+                fancybox=True,
+                framealpha=0.8,
+            )
 
             # Customize the grid lines to make them dashed and light gray
-            plt.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
+            plt.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.7)
 
             # Set axis limits to fit the full PR curve range
             plt.xlim(0, 1)
             plt.ylim(0, 1)
 
             # Save the plot with a unique filename for each IoU threshold
-            plt.savefig(f'{savePath}/pr_curve_iou_{iou_thresh}.png')
+            plt.savefig(f"{savePath}/pr_curve_iou_{iou_thresh}.png")
 
             # Close the figure to free up memory
             plt.close()
 
-def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth',
-                           eval_set_path="data/archive/test_sets/ugv", results_path="results", width=400, height=400, class_label_mapping={1:1}):
-    '''
+
+def evaluate_all_test_sets(
+    model_path : Optional[str] = "models/ugvs/fasterrcnn_resnet50_fpn_ugv_v7.pth",
+    eval_set_path : Optional[str] = "data/archive/test_sets/ugv",
+    results_path : Optional[str] = "results",
+    width : int = 400,
+    height : int =400,
+    class_label_mapping : Dict[int, int] = {1: 1}
+) -> None:
+    """
     Evaluates all test sets specified.
-    '''
+    """
     model_name = os.path.basename(model_path)
     model_name = os.path.splitext(model_name)[0]
     model = torch.load(model_path)
 
     average_precisions_50 = []
     average_precisions_75 = []
-    folder_paths = [os.path.join(eval_set_path, name) for name in os.listdir(eval_set_path) if os.path.isdir(os.path.join(eval_set_path, name))]
+    folder_paths = [
+        os.path.join(eval_set_path, name)
+        for name in os.listdir(eval_set_path)
+        if os.path.isdir(os.path.join(eval_set_path, name))
+    ]
     for path in folder_paths:
 
-        dataset = RAITEDataset(f'{path}/images', f'{path}/labels', width, height, class_label_mapping)
-        evaluator = DetectionEvaluator(model, dataset)
-        ap_results, area_results = evaluator.evaluate()
+        dataset = RAITEDataset(
+            f"{path}/images", f"{path}/labels", width, height, class_label_mapping
+        )
+        test_evaluator = DetectionEvaluator(model, dataset)
+        ap_results, area_results = test_evaluator.evaluate()
 
         # for each test set, create a folder f in: test_sets/results/model_type
         # or results and print results to it.
@@ -425,13 +513,15 @@ def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v
 
         dir_name = os.path.dirname(eval_set_path)
         base_name = os.path.basename(eval_set_path)
-        #results_dir = f'{dir_name}/results/{base_name}/{model_name}'
-        results_dir = f'{results_path}/{base_name}/{model_name}'
+        # results_dir = f'{dir_name}/results/{base_name}/{model_name}'
+        results_dir = f"{results_path}/{base_name}/{model_name}"
         os.makedirs(results_dir, exist_ok=True)
 
-        fp = os.path.join(results_dir, folder_name) # makes a folder for each test for the model
+        fp = os.path.join(
+            results_dir, folder_name
+        )  # makes a folder for each test for the model
         os.makedirs(fp, exist_ok=True)
-        result_file = os.path.join(fp, "results.json") # results file for that test
+        result_file = os.path.join(fp, "results.json")  # results file for that test
 
         # ALL PLOTS HERE:
         # Add all plots to the results folder for each test
@@ -439,48 +529,68 @@ def evaluate_all_test_sets(model_path='models/ugvs/fasterrcnn_resnet50_fpn_ugv_v
 
         # DICTIONARY DATA HERE:
         # Dump dictionary into the json file.
-        with open(result_file, 'w') as file:
+        with open(result_file, "w") as file:
             json.dump(ap_results, file, indent=4)
 
         # SAVE AVERAGE PRECISION FOR TEST TO BE USED FOR mAP
-        average_precisions_50.append(ap_results['ap_results'][0.5]['final_ap'])
-        average_precisions_75.append(ap_results['ap_results'][0.75]['final_ap'])
+        average_precisions_50.append(ap_results["ap_results"][0.5]["final_ap"])
+        average_precisions_75.append(ap_results["ap_results"][0.75]["final_ap"])
 
     # Once complete, find mAP across all.
-    file_path = os.path.join(results_dir, "overall_results.txt") # creates results.txt 
-    mAP_50 = sum(average_precisions_50) / len(average_precisions_50)  
+    file_path = os.path.join(results_dir, "overall_results.txt")  # creates results.txt
+    mAP_50 = sum(average_precisions_50) / len(average_precisions_50)
     mAP_75 = sum(average_precisions_75) / len(average_precisions_75)
 
-    with open(file_path, 'a') as f:  # Use 'a' to append to the file
-        f.write(f'Mean Average Precision at 50% IoU : {mAP_50:.4f}\n')
-        f.write(f'Mean Average Precision at 75% IoU : {mAP_75:.4f}\n')
+    with open(file_path, "a") as f:  # Use 'a' to append to the file
+        f.write(f"Mean Average Precision at 50% IoU : {mAP_50:.4f}\n")
+        f.write(f"Mean Average Precision at 75% IoU : {mAP_75:.4f}\n")
 
-    
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = ArgumentParser(description="evaluation script parameters")
     eval_params = EvalParams(parser)
     args = parser.parse_args(sys.argv[1:])
-    eval_args = eval_params.extract(args)
+    eval_args: GroupParams = eval_params.extract(args)
+
 
     # [TODO] make this a case statement
     if eval_args.json:  # If only JSON is provided:
-        evaluator = DetectionEvaluator(model=None, dataset=None, predictions_json=eval_args.json)
+        evaluator = DetectionEvaluator(
+            model=None, dataset=None, predictions_json=eval_args.json
+        )
         ap_results, area_results = evaluator.evaluate()
         f1 = evaluator.find_highest_f1_score(ap_results)
         print(f1)
-        evaluator.plot_precision_recall_curve(ap_results, savePath=eval_args.results_path,highlight_point=f1)
-    elif eval_args.dataset_path: # Requires model path, dataset, and class label mappings
-        dataset = RAITEDataset(eval_args.dataset_path + '/images', 
-                           eval_args.dataset_path + '/labels', 
-                           eval_args.Width, eval_args.Height, eval_args.label_mappings) # {0:0, 4:4, 6:6}
-        model = torch.load(eval_args.model_path)
-        evaluator = DetectionEvaluator(model=model, dataset=dataset, predictions_json=None)
+        evaluator.plot_precision_recall_curve(
+            ap_results, savePath=eval_args.results_path, highlight_point=f1
+        )
+    elif (
+        eval_args.dataset_path
+    ):  # Requires model path, dataset, and class label mappings
+        detection_dataset = RAITEDataset(
+            eval_args.dataset_path + "/images",
+            eval_args.dataset_path + "/labels",
+            eval_args.Width,
+            eval_args.Height,
+            eval_args.label_mappings,
+        )  # {0:0, 4:4, 6:6}
+        detection_model = torch.load(eval_args.model_path)
+        evaluator = DetectionEvaluator(
+            model=detection_model, dataset=detection_dataset, predictions_json=None
+        )
         ap_results, area_results = evaluator.evaluate()
         print(ap_results)
         f1 = evaluator.find_highest_f1_score(ap_results)
         print(f1)
-        evaluator.plot_precision_recall_curve(ap_results, savePath=eval_args.results_path, highlight_point=f1)
-    else: # If evaluation set (multiple datasets all on one model)    
-        evaluate_all_test_sets(model_path=eval_args.model_path, eval_set_path=eval_args.evaluation_set_path,
-                               results_path=eval_args.results_path, width=eval_args.Width, height=eval_args.Height,
-                               class_label_mapping=eval_args.label_mappings)
+        evaluator.plot_precision_recall_curve(
+            ap_results, savePath=eval_args.results_path, highlight_point=f1
+        )
+    else:  # If evaluation set (multiple datasets all on one model)
+        evaluate_all_test_sets(
+            model_path=eval_args.model_path,
+            eval_set_path=eval_args.evaluation_set_path,
+            results_path=eval_args.results_path,
+            width=eval_args.Width,
+            height=eval_args.Height,
+            class_label_mapping=eval_args.label_mappings,
+        )
