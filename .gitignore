@@ -1,4 +1,12 @@
 data/
+datasets/
 models/
 models/fasterrcnn_resnet50_fpn_labData.pth
 models/fasterrcnn_resnet50_fpn.pth
+scratch/
+results/
+test/
+wandb/
+multimodal_test/
+multimodal_test2/
+*.pth

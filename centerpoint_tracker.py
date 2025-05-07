@@ -27,7 +27,13 @@ class CentroidTracker():
         del self.objects[objectID]
         del self.disappeared[objectID]
 
-    def update(self, boxes):
+    def update(self, boxes=None, centroids=None):
+        '''
+        Updates ID either given centroids or boxes
+        '''
+        if centroids: # calling boxes centroids for algorithm logic
+            boxes = centroids
+            
         if len(boxes) == 0:
             for objectID in list(self.disappeared.keys()):
                 self.disappeared[objectID] += 1
@@ -37,13 +43,16 @@ class CentroidTracker():
                     self.deregister(objectID)
 
             return self.objects
-
-        # When we do have boxes:
-        inputCentroids = np.zeros((len(boxes), 2), dtype="int")
-        for (i, (startX, startY, endX, endY)) in enumerate(boxes):
-            cX = int((startX + endX) / 2.0)
-            cY = int((startY + endY) / 2.0)
-            inputCentroids[i] = (cX, cY)
+        
+        # When we do have boxes/ measurements:
+        if centroids:
+            inputCentroids = centroids # should check if this works
+        else:  
+            inputCentroids = np.zeros((len(boxes), 2), dtype="int")
+            for (i, (startX, startY, endX, endY)) in enumerate(boxes):
+                cX = int((startX + endX) / 2.0)
+                cY = int((startY + endY) / 2.0)
+                inputCentroids[i] = (cX, cY)
 
         if len(self.objects) == 0:  # Register our centroids if we don't have any yet
             for i in range(len(inputCentroids)):

@@ -1,25 +1,59 @@
 import os
+import re
 from PIL import Image
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
-def convert_to_png_in_order(input_dir, output_dir, prefix):
+
+def send_email(hours: int, minutes: int, avg_time_per_epoch: float) -> None:
+    """ """
+    sender_email = "bakerherrin2@gmail.com"
+    receiver_email = "bakerherrin2@gmail.com"
+    password = "cdvi gqha lund weld"  # Replace with your Gmail password or app-specific password
+
+    subject = "Training Complete - Faster R-CNN"
+    body = f"Training is complete.\n\nTotal Training Time: {hours} hours and {minutes} minutes\nAverage Time per Epoch: {avg_time_per_epoch:.2f} seconds"
+
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, password)
+        text = msg.as_string()
+        server.sendmail(sender_email, receiver_email, text)
+        server.quit()
+        print("Email notification sent!")
+    except Exception as e:
+        print(f"Failed to send email notification: {e}")
+        
+        
+def convert_to_png_in_order(input_dir, output_dir):
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Get a sorted list of all files in the input directory
-    image_files = sorted([f for f in os.listdir(input_dir) if f.endswith('.png') or f.endswith('.jpg')])
+    image_files = sorted([f for f in os.listdir(input_dir) if f.endswith(('.png','.PNG','.JPG','.jpeg','.JPEG', '.jpg', 'webp'))])
 
     # Loop through the sorted list and convert to PNG
     for i, filename in enumerate(image_files, start=1):
         # Construct the full file path
         file_path = os.path.join(input_dir, filename)
+        image_base_name = os.path.splitext(filename)[0] # Gets image base name without extention
         
         # Open the image file
         try:
             with Image.open(file_path) as img:
                 # Create the output file path with the format prefix_ith_image.png
-                output_file = f"{prefix}_{i}.png"
+                output_file = f"{image_base_name}.png"
                 output_path = os.path.join(output_dir, output_file)
                 
                 # Save the image as PNG
@@ -119,8 +153,74 @@ def find_the_empty_txt(directory):
         if filename.endswith('.txt') and os.path.getsize(file_path) == 0:
             print(f"Empty file: {filename}")
 
+def remove_end_of_filename(input_dir):
+    # Removes additional ending of file name 
+    
+    # Set to track processed pairs
+    processed_files = set()
 
-def rename_image_txt_pairs(input_dir, prefix):
+    # Get all image files in the directory
+    image_files = [f for f in os.listdir(input_dir) if f.endswith(('.png','.PNG','.JPG','.jpeg','.JPEG', '.jpg'))]
+
+    # Process each image 
+    for i, image_filename in enumerate(image_files, start=1):
+        image_base_name = os.path.splitext(image_filename)[0]  # Get the base name without extension
+
+        # Check if the image file has already been processed
+        if image_base_name in processed_files:
+            continue  # Skip if already processed
+        
+        # Constructs old and new file paths
+        old_image_path = os.path.join(input_dir, image_filename)
+        image_base_name = image_base_name.rsplit(' ', 1)[0] # Removes the end string of file name seperated by a space
+        new_image_name = f"{image_base_name}{os.path.splitext(image_filename)[1]}"  # Retain original extension
+        new_image_path = os.path.join(input_dir, new_image_name)
+
+
+        # Rename the image and txt file
+        try:
+            os.rename(old_image_path, new_image_path)
+            print(f"Renamed {image_filename} to {new_image_name}")
+
+            # Add base names of processed image and txt file to the set
+            processed_files.add(image_base_name)
+
+        except Exception as e:
+            print(f"Failed to rename files {image_filename}: {e}")    
+
+
+def rename_images_sequentially(directory, extension=".png"):
+    """
+    Renames images like frame_XXX_T_YYY.png to 0000.png, 0001.png, ..., in order of XXX.
+
+    Args:
+        directory (str): Path to the directory containing the images.
+        extension (str): File extension (default: '.png').
+    """
+    # Match pattern like frame_123_T_4567890.png
+    pattern = re.compile(r"frame_(\d+)_T_\d+\{}".format(extension))
+
+    files = []
+    for f in os.listdir(directory):
+        if f.lower().endswith(extension.lower()):
+            match = pattern.match(f)
+            if match:
+                frame_number = int(match.group(1))
+                files.append((frame_number, f))
+
+    # Sort by extracted frame number
+    files.sort()
+
+    # Rename
+    for i, (_, filename) in enumerate(files):
+        old_path = os.path.join(directory, filename)
+        new_name = f"{i:04d}{extension}"
+        new_path = os.path.join(directory, new_name)
+        os.rename(old_path, new_path)
+        print(f"Renamed: {filename} → {new_name}")
+
+
+def rename_image_txt_pairs(input_dir, prefix, start_num=0):
     """
     Renames all image and txt file pairs in the input directory to a specified prefix.
     
@@ -152,8 +252,8 @@ def rename_image_txt_pairs(input_dir, prefix):
             continue
 
         # New names for the image and txt files
-        new_image_name = f"{prefix}_{i}{os.path.splitext(image_filename)[1]}"  # Retain original extension
-        new_txt_name = f"{prefix}_{i}.txt"
+        new_image_name = f"{prefix}_{i+start_num}{os.path.splitext(image_filename)[1]}"  # Retain original extension
+        new_txt_name = f"{prefix}_{i+start_num}.txt"
 
         # Construct full old and new file paths
         old_image_path = os.path.join(input_dir, image_filename)
@@ -173,6 +273,44 @@ def rename_image_txt_pairs(input_dir, prefix):
         except Exception as e:
             print(f"Failed to rename files {image_filename} and {txt_filename}: {e}")
 
+
+import os
+
+def replace_any_string_in_txt_files(directory, replacement_digit):
+    """
+    Goes through a directory and replaces the first word (string) of each line in all .txt files
+    with the specified digit.
+    
+    Args:
+    - directory (str): The path to the directory containing the .txt files.
+    - replacement_digit (str or int): The digit to replace the first string with.
+    """
+    # Get all txt files in the directory
+    txt_files = [f for f in os.listdir(directory) if f.endswith('.txt')]
+
+    # Process each txt file
+    for txt_file in txt_files:
+        file_path = os.path.join(directory, txt_file)
+
+        # Read the contents of the file
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Replace the first word (string) of each line with the replacement digit
+        with open(file_path, 'w') as file:
+            for line in lines:
+                # Split the line into words (assumes words are separated by spaces)
+                parts = line.split(maxsplit=1)
+
+                if parts:
+                    # Replace the first word (string) with the replacement digit
+                    new_line = f"{replacement_digit} {parts[1]}" if len(parts) > 1 else f"{replacement_digit}\n"
+                    file.write(new_line)
+                else:
+                    # In case the line is empty, write it as is
+                    file.write(line)
+
+        print(f"Processed {txt_file}")
 
 
 
@@ -199,9 +337,23 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/Documents/test4_251_DK_ugv"
-    prefix = "occlusions"
-    replace_first_element_in_files(input_dir, old_value=2, new_value=0)
+    directory = "multimodal_test2/images"
+    #input_dir = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/drone_dataset_comp_v2/train/labels"
+    #output_dir = "/home/eherrin@ad.ufl.edu/Documents/test_8_jakal_new/images/converted_to_png"
+    #input_dir = "/home/eherrin@ad.ufl.edu/Documents/ugv_car_counterexamples_train/labels"
+    # prefix = "RAITE_jackal_with_cars"
+    # rename_image_txt_pairs(input_dir, prefix)
+    # find_the_empty_txt(input_dir)
+    # replace_first_element_in_files(input_dir, old_value=1, new_value=5)
+    # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
+    # replace_first_element_in_files(input_dir, old_value=3, new_value=0)
+    # replace_first_element_in_files(input_dir, old_value=4, new_value=0)
+    #replace_first_element_in_files(input_dir, old_value=2, new_value=1)
+    # replace_any_string_in_txt_files(input_dir, 0)
+    # convert_to_png_in_order(input_dir, output_dir, prefix)
+    # rename_image_txt_pairs(input_dir, prefix)
+    # remove_end_of_filename(input_dir)
+    rename_images_sequentially(directory, extension=".png")
 
 
 
