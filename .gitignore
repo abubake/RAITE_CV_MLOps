@@ -7,3 +7,5 @@ scratch/
 results/
 test/
 wandb/
+multimodal_test/
+multimodal_test2/
