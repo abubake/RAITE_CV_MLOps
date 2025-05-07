@@ -487,6 +487,7 @@ def evaluate_all_test_sets(
     for path in folder_paths:
 
         dataset = RAITEDataset(
+            
             f"{path}/images", f"{path}/labels", width, height, class_label_mapping
         )
         test_evaluator = DetectionEvaluator(model, dataset)

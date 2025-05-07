@@ -1,34 +1,40 @@
 import os
+import re
 from PIL import Image
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
-# def convert_to_png_in_order(input_dir, output_dir, prefix):
-#     # Create the output directory if it doesn't exist
-#     if not os.path.exists(output_dir):
-#         os.makedirs(output_dir)
 
-#     # Get a sorted list of all files in the input directory
-#     image_files = sorted([f for f in os.listdir(input_dir) if f.endswith('.png') or f.endswith('.jpg')])
+def send_email(hours: int, minutes: int, avg_time_per_epoch: float) -> None:
+    """ """
+    sender_email = "bakerherrin2@gmail.com"
+    receiver_email = "bakerherrin2@gmail.com"
+    password = "cdvi gqha lund weld"  # Replace with your Gmail password or app-specific password
 
-#     # Loop through the sorted list and convert to PNG
-#     for i, filename in enumerate(image_files, start=1):
-#         # Construct the full file path
-#         file_path = os.path.join(input_dir, filename)
+    subject = "Training Complete - Faster R-CNN"
+    body = f"Training is complete.\n\nTotal Training Time: {hours} hours and {minutes} minutes\nAverage Time per Epoch: {avg_time_per_epoch:.2f} seconds"
+
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, password)
+        text = msg.as_string()
+        server.sendmail(sender_email, receiver_email, text)
+        server.quit()
+        print("Email notification sent!")
+    except Exception as e:
+        print(f"Failed to send email notification: {e}")
         
-#         # Open the image file
-#         try:
-#             with Image.open(file_path) as img:
-#                 # Create the output file path with the format prefix_ith_image.png
-#                 output_file = f"{prefix}_{i}.png"
-#                 output_path = os.path.join(output_dir, output_file)
-                
-#                 # Save the image as PNG
-#                 img.save(output_path, 'PNG')
-#                 print(f"Converted {filename} to {output_file}")
-#         except Exception as e:
-#             print(f"Failed to convert {filename}: {e}")
-
-# This version maintains the image base name after the conversion
+        
 def convert_to_png_in_order(input_dir, output_dir):
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -183,6 +189,37 @@ def remove_end_of_filename(input_dir):
             print(f"Failed to rename files {image_filename}: {e}")    
 
 
+def rename_images_sequentially(directory, extension=".png"):
+    """
+    Renames images like frame_XXX_T_YYY.png to 0000.png, 0001.png, ..., in order of XXX.
+
+    Args:
+        directory (str): Path to the directory containing the images.
+        extension (str): File extension (default: '.png').
+    """
+    # Match pattern like frame_123_T_4567890.png
+    pattern = re.compile(r"frame_(\d+)_T_\d+\{}".format(extension))
+
+    files = []
+    for f in os.listdir(directory):
+        if f.lower().endswith(extension.lower()):
+            match = pattern.match(f)
+            if match:
+                frame_number = int(match.group(1))
+                files.append((frame_number, f))
+
+    # Sort by extracted frame number
+    files.sort()
+
+    # Rename
+    for i, (_, filename) in enumerate(files):
+        old_path = os.path.join(directory, filename)
+        new_name = f"{i:04d}{extension}"
+        new_path = os.path.join(directory, new_name)
+        os.rename(old_path, new_path)
+        print(f"Renamed: {filename} → {new_name}")
+
+
 def rename_image_txt_pairs(input_dir, prefix, start_num=0):
     """
     Renames all image and txt file pairs in the input directory to a specified prefix.
@@ -300,13 +337,14 @@ if __name__ == '__main__':
     Rename all class labels to txt's from n to class 1, then rename all images with a new prefix, and do the same for the txt's
 
     '''
-    input_dir = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/drone_dataset_comp_v2/train/labels"
+    directory = "multimodal_test2/images"
+    #input_dir = "/home/eherrin@ad.ufl.edu/code/gitlab_dev/raiteclassify/data/archive/drone_dataset_comp_v2/train/labels"
     #output_dir = "/home/eherrin@ad.ufl.edu/Documents/test_8_jakal_new/images/converted_to_png"
     #input_dir = "/home/eherrin@ad.ufl.edu/Documents/ugv_car_counterexamples_train/labels"
     # prefix = "RAITE_jackal_with_cars"
     # rename_image_txt_pairs(input_dir, prefix)
     # find_the_empty_txt(input_dir)
-    replace_first_element_in_files(input_dir, old_value=1, new_value=5)
+    # replace_first_element_in_files(input_dir, old_value=1, new_value=5)
     # replace_first_element_in_files(input_dir, old_value=2, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=3, new_value=0)
     # replace_first_element_in_files(input_dir, old_value=4, new_value=0)
@@ -315,6 +353,7 @@ if __name__ == '__main__':
     # convert_to_png_in_order(input_dir, output_dir, prefix)
     # rename_image_txt_pairs(input_dir, prefix)
     # remove_end_of_filename(input_dir)
+    rename_images_sequentially(directory, extension=".png")
 
 
 
