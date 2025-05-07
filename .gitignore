@@ -9,3 +9,4 @@ test/
 wandb/
 multimodal_test/
 multimodal_test2/
+*.pth
